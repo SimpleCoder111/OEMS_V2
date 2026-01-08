@@ -1,4 +1,4 @@
-package org.demo.oems.payload;
+package org.demo.oems.payload.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

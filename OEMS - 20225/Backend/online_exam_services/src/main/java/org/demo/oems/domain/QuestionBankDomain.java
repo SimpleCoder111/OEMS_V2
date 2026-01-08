@@ -1,9 +1,6 @@
 package org.demo.oems.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 @Entity
 @Table(name = "question_bank")
@@ -14,16 +11,32 @@ import lombok.*;
 public class QuestionBankDomain {
     @Id
     @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
     @Column(name = "subject_id")
     private long subjectId;
 
-    @Column(name = "content")
-    private String content;
+    @Column(name = "chapter_id")
+    private long chapterId;
+
+    @Column(name = "question_id")
+    private long questionId;
 
     @Column(name = "question_type")
     private String questionType;
+
+    @Column(name = "quesiton_content")
+    private String questionContent;
+
+    @Column(name = "option_text")
+    private String optionText;
+
+    @Column(name = "is_correct")
+    private String isCorrect;
+
+    @Column(name = "question_score")
+    private int questionScore;
 
     @Column(name = "difficulty")
     private String difficulty;
@@ -32,5 +45,5 @@ public class QuestionBankDomain {
     private String langCode;
 
     @Column(name = "created_by")
-    private int createdBy;
+    private String createdBy;
 }

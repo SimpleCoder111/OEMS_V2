@@ -1,10 +1,9 @@
 package org.demo.oems.rest;
 
-import org.apache.coyote.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.oems.payload.LoginRequest;
-import org.demo.oems.payload.LoginResponse;
+import org.demo.oems.payload.request.LoginRequest;
+import org.demo.oems.payload.response.LoginResponse;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

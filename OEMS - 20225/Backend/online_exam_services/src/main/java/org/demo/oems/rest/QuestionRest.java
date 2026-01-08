@@ -3,12 +3,12 @@ package org.demo.oems.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.QuestionBankDomain;
+import org.demo.oems.payload.request.QuestionBankInsertRequest;
 import org.demo.oems.service.QuestionBankService;
+import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,6 +28,18 @@ public class QuestionRest {
             logger.info("Start Retrieve all question bank by subject Id :: {}", subjectId );
             List<QuestionBankDomain> questionBankList = questionBankService.getAllQuestionBanksBySubject(subjectId);
             return new ResponseEntity<>(questionBankList, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @PostMapping("/addQuestionBank")
+    public ResponseEntity<?> addQuestionBank(@RequestBody QuestionBankInsertRequest questionBankInsertRequest){
+        try{
+            logger.info("Add Question Bank :: {}", questionBankInsertRequest);
+            JSONObject apiResponse = questionBankService.addQuestionBanks(questionBankInsertRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
             return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
