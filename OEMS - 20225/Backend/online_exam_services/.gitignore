@@ -1,0 +1,31 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.versions
+pom.xml.releaseBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+build directory
+!*.jar
+!*.zip
+!*.tar.gz
+
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+logs/
+tmp/
