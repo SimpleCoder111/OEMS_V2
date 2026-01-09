@@ -3,7 +3,7 @@ package org.demo.oems.payload.request;
 import lombok.Data;
 
 @Data
-public class AddSubjectAndChapterRequest {
+public class CreateSubjectInfoRequest {
 
     private String subjectName;
 

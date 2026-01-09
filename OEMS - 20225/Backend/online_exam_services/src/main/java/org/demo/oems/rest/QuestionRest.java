@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.QuestionBankDomain;
 import org.demo.oems.payload.request.QuestionBankInsertRequest;
+import org.demo.oems.payload.response.QuestionBankListsResponse;
 import org.demo.oems.service.QuestionBankService;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
@@ -22,12 +23,12 @@ public class QuestionRest {
         this.questionBankService = questionBankService;
     }
 
-    @GetMapping("/teacher/getQuestionBankBySubject")
+    @GetMapping("/getQuestionBankBySubject")
     public ResponseEntity<?> getQuestionBank(@RequestParam("subjectId") long subjectId){
         try{
             logger.info("Start Retrieve all question bank by subject Id :: {}", subjectId );
-            List<QuestionBankDomain> questionBankList = questionBankService.getAllQuestionBanksBySubject(subjectId);
-            return new ResponseEntity<>(questionBankList, HttpStatusCode.valueOf(200));
+            JSONObject apiResponse = questionBankService.getAllQuestionBanksBySubject(subjectId);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
             return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
@@ -39,6 +40,18 @@ public class QuestionRest {
         try{
             logger.info("Add Question Bank :: {}", questionBankInsertRequest);
             JSONObject apiResponse = questionBankService.addQuestionBanks(questionBankInsertRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @PostMapping("/addQuestionBanksAsArray")
+    public ResponseEntity<?> addQuestionBanks(@RequestBody List<QuestionBankInsertRequest> apiRequest){
+        try{
+            logger.info("Add Question Bank as Array :: {}", apiRequest);
+            JSONObject apiResponse = questionBankService.addQuestionBanksArray(apiRequest);
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());

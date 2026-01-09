@@ -1,11 +1,12 @@
 package org.demo.oems.domain;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 @Entity
 @Table(name = "subject_info")
 @Data
+@RequiredArgsConstructor
 public class SubjectDomain {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)

@@ -2,13 +2,13 @@ package org.demo.oems.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.oems.domain.ExamDomain;
-import org.demo.oems.domain.QuestionBankDomain;
-import org.demo.oems.repository.ExamRepo;
+import org.demo.oems.payload.request.ExamPaperGenerationRequest;
 import org.demo.oems.service.ExamService;
+import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,6 +25,17 @@ public class ExamRest {
     }
 
 
+    @GetMapping("/getExamPaper")
+    public ResponseEntity<?> getRandomizeExamQuestions(@RequestBody ExamPaperGenerationRequest apiRequest){
+        try{
+            logger.info("Start Get Randomized Exam Questions :: {}", apiRequest);
+            JSONObject apiResponse = examService.getExamPaper(apiRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception happen while Get Randomized Exam Questions :: {}", e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+        }
+    }
 
 
 
