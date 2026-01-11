@@ -2,28 +2,54 @@ package org.demo.oems.service;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.demo.oems.domain.RoleDomain;
 import org.demo.oems.domain.UserInfoDomain;
 import org.demo.oems.payload.request.CreateUserRequest;
+import org.demo.oems.payload.response.UserProfileResponse;
 import org.demo.oems.repository.UserInfoRepo;
 import org.demo.oems.utils.ResponseUtils;
 import org.json.simple.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
     private final UserInfoRepo userInfoRepo;
+
+    private final PasswordEncoder passwordEncoder;
 
     private final Logger logger = LogManager.getLogger(UserService.class);
 
+    private static final String LOG_PREFIX_FINAL_SERVICES_RESPONSE = "Final Service Response :: {}";
 
-    public UserService(UserInfoRepo userInfoRepo) {
+    @Value("${app.upload.profile-dir}")
+    private String profileUploadDir;
+
+    public UserService(UserInfoRepo userInfoRepo, PasswordEncoder passwordEncoder) {
         this.userInfoRepo = userInfoRepo;
+        this.passwordEncoder = passwordEncoder;
     }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // Load the full UserInfoDomain entity (role is fetched EAGERLY, so it's already available)
+        return userInfoRepo.findUserInfoDomainByUserId(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    }
+
 
     public JSONObject createUser(CreateUserRequest request){
         JSONObject apiResponse = new JSONObject();
@@ -39,28 +65,40 @@ public class UserService {
                 return apiResponse;
             }
 
-            UserInfoDomain newUser = new UserInfoDomain();
+            String hashedPassword = passwordEncoder.encode(request.getPassword());
+            request.setPassword(hashedPassword);
 
-            newUser.setUserId(request.getUserId());
-            newUser.setName(request.getName());
-            newUser.setPassword(request.getPassword());
-            newUser.setDateOfBirth(request.getDateOfBirth());
-            newUser.setGender(request.getGender());
-            newUser.setRoleId(request.getRoleId());
-            newUser.setEmail(request.getEmail());
-            newUser.setPhoneNumber(request.getPhoneNumber());
-            newUser.setAddress(request.getAddress());
+            UserInfoDomain newUser = getUserInfoDomain(request);
 
             userInfoRepo.save(newUser);
 
             apiResponse = ResponseUtils.responseFormatUtils("0", "Successfully Create User");
-            logger.debug("final service response :: {}", apiResponse);
+            logger.debug(LOG_PREFIX_FINAL_SERVICES_RESPONSE, apiResponse);
             return apiResponse;
         }catch (Exception e){
             logger.error("Exception while trying to added new subject :: {}", e.getMessage());
             apiResponse = ResponseUtils.responseFormatUtils("1", e.getMessage());
             return apiResponse;
         }
+    }
+
+    private static UserInfoDomain getUserInfoDomain(CreateUserRequest request) {
+        UserInfoDomain newUser = new UserInfoDomain();
+
+        newUser.setUserId(request.getUserId());
+        newUser.setName(request.getName());
+        newUser.setPassword(request.getPassword());
+        newUser.setDateOfBirth(request.getDateOfBirth());
+        newUser.setGender(request.getGender());
+
+        RoleDomain roleDomain = new RoleDomain();
+        roleDomain.setId(request.getRoleId());
+
+        newUser.setRole(roleDomain);
+        newUser.setEmail(request.getEmail());
+        newUser.setPhoneNumber(request.getPhoneNumber());
+        newUser.setAddress(request.getAddress());
+        return newUser;
     }
 
     public List<UserInfoDomain> getUserInfoListsByRoleId(int roleId){
@@ -73,7 +111,7 @@ public class UserService {
             logger.error("Exception while trying to Get User Info Lists By Role ID :: {}", e.getMessage());
         }
 
-        logger.debug("final service response :: {}", userInfoDomainList);
+        logger.debug(LOG_PREFIX_FINAL_SERVICES_RESPONSE, userInfoDomainList);
         return userInfoDomainList;
     }
 
@@ -85,7 +123,7 @@ public class UserService {
         }catch (Exception e){
             logger.error("Exception while trying to Get All User Info Lists :: {}", e.getMessage());
         }
-        logger.debug("final service response :: {}", userInfoDomainList);
+        logger.debug(LOG_PREFIX_FINAL_SERVICES_RESPONSE, userInfoDomainList);
         return userInfoDomainList;
     }
 
@@ -97,6 +135,104 @@ public class UserService {
         }catch (Exception e){
             logger.error("Exception while trying to Check if user Exists :: {}", e.getMessage());
             return true;
+        }
+    }
+
+    @Transactional
+    public UserProfileResponse uploadProfileImage(MultipartFile file, String userId) {
+
+        UserProfileResponse userProfileResponse = new UserProfileResponse();
+
+        try {
+            Optional<UserInfoDomain> userInfoOptional = userInfoRepo.findUserInfoDomainByUserId(userId);
+
+            if (userInfoOptional.isEmpty()) {
+                return userProfileResponse;
+            }
+
+            UserInfoDomain user = userInfoOptional.get();
+
+            String extension = getString(file);
+            String filename = user.getUserId() + "_" + UUID.randomUUID() + extension;
+
+            // Save file
+            Path uploadPath = Paths.get(profileUploadDir);
+            Path filePath = uploadPath.resolve(filename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Delete old image if exists
+            if (user.getProfileImageUrl() != null) {
+                Path oldPath = uploadPath.resolve(Paths.get(user.getProfileImageUrl()).getFileName());
+                Files.deleteIfExists(oldPath);
+            }
+
+            // Save URL (relative for frontend)
+            user.setProfileImageUrl("/uploads/profile/" + filename);
+            userInfoRepo.save(user);
+
+            // Return updated profile
+            return new UserProfileResponse(
+                    user.getUserId(),
+                    user.getName(),
+                    user.getEmail(),
+                    user.getPhoneNumber(),
+                    user.getAddress(),
+                    user.getDateOfBirth(),
+                    user.getGender(),
+                    user.getRoleName(),
+                    user.getProfileImageUrl()
+            );
+        }catch (Exception e){
+            logger.error("Exception while upload user profile image :: " + userProfileResponse);
+            return userProfileResponse;
+        }
+    }
+
+    private static String getString(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Image file is required");
+        }
+        if (file.getSize() > 2 * 1024 * 1024) {  // 2MB limit
+            throw new IllegalArgumentException("Image size exceeds 2MB");
+        }
+        String contentType = file.getContentType();
+        if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) {
+            throw new IllegalArgumentException("Only JPEG or PNG images allowed");
+        }
+
+        // Generate unique filename
+        return contentType.equals("image/jpeg") ? ".jpg" : ".png";
+    }
+
+    public UserProfileResponse getUserProfile(String userId){
+        UserProfileResponse userProfileResponse = new UserProfileResponse();
+        try{
+            logger.debug("Start Get User Profile Service :: {}", userId);
+
+            Optional<UserInfoDomain> userInfoOptional = userInfoRepo.findUserInfoDomainByUserId(userId);
+
+            if(userInfoOptional.isEmpty()){
+                logger.debug("Cannot find user info for the user ID :: {}", userId);
+                return userProfileResponse;
+            }
+
+            UserInfoDomain userInfo = userInfoOptional.get();
+
+            // Return updated profile
+            return new UserProfileResponse(
+                    userInfo.getUserId(),
+                    userInfo.getName(),
+                    userInfo.getEmail(),
+                    userInfo.getPhoneNumber(),
+                    userInfo.getAddress(),
+                    userInfo.getDateOfBirth(),
+                    userInfo.getGender(),
+                    userInfo.getRoleName(),
+                    userInfo.getProfileImageUrl()
+            );
+        }catch (Exception e){
+            logger.error("Exception happen :: {}", e.getMessage());
+            return userProfileResponse;
         }
     }
 }

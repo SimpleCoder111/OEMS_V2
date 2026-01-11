@@ -1,28 +1,19 @@
-package org.demo.oems.payload.request;
+package org.demo.oems.payload.response;
+
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
 import java.time.LocalDate;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString
-public class CreateUserRequest {
-
+public class UserProfileResponse {
     private String userId;
 
     private String name;
-
-    private String password;
-
-    private LocalDate dateOfBirth;
-
-    private String gender;
-
-    private Long roleId;
 
     private String email;
 
@@ -30,4 +21,11 @@ public class CreateUserRequest {
 
     private String address;
 
+    private LocalDate dateOfBirth;
+
+    private String gender;
+
+    private String roleName;
+
+    private String profileImageUrl;  // ← new
 }

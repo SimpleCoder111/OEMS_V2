@@ -11,7 +11,7 @@ public interface QuestionBankRepo extends JpaRepository<QuestionBankDomain, Long
 
     List<QuestionBankDomain> getQuestionBankDomainsBySubjectId(long subjectId);
 
-    @Query(value = "SELECT * FROM questions WHERE difficulty = :difficulty AND subjectId = :subjectId ORDER BY RAND() LIMIT :limit", nativeQuery = true)
+    @Query(value = "SELECT * FROM question_bank WHERE difficulty = :difficulty AND subject_id = :subjectId ORDER BY RANDOM() LIMIT :limit", nativeQuery = true)
     List<QuestionBankDomain> findRandomNativeByDifficultyAndSubjectId(@Param("difficulty") String difficulty, @Param("limit") int limit, @Param("subjectId") long subjectId);
 
 }

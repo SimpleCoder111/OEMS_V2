@@ -95,7 +95,7 @@ public class QuestionBankService {
         return finalResponse;
     }
 
-    private static List<OptionListResponse> getOptionListResponses(List<OptionBankDomain> optionBankLists) {
+    public static List<OptionListResponse> getOptionListResponses(List<OptionBankDomain> optionBankLists) {
         List<OptionListResponse> optionResponseLists = new ArrayList<>();
 
 
