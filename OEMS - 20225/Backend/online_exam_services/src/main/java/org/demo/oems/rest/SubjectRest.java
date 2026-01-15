@@ -3,6 +3,9 @@ package org.demo.oems.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.SubjectDomain;
+import org.demo.oems.payload.admin.request.*;
+import org.demo.oems.payload.response.CreateChapterResponse;
+import org.demo.oems.payload.response.SubjectResponse;
 import org.demo.oems.payload.request.CreateSubjectChapter;
 import org.demo.oems.payload.request.CreateSubjectInfoRequest;
 import org.demo.oems.service.SubjectService;
@@ -11,6 +14,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -72,6 +76,92 @@ public class SubjectRest {
         }
     }
 
+    /*
+    Purpose: 1. Load all subjects with their chapters on page load
+    Query params: Optional search filter
+     */
+    @GetMapping("/subjects")
+    public List<SubjectResponse> getAllSubjects(){
+        List<SubjectResponse> subjectResponseList = new ArrayList<>();
+
+        return subjectResponseList;
+    }
+
+    /*
+    Purpose: 2. Add a new subject
+     */
+    @PostMapping("/subjects")
+    public String getAllSubjects(@RequestBody CreateSubjectRequest createSubjectRequest){
+
+        return "OK";
+    }
+
+    /*
+    Purpose: 3. Edit subject details
+    */
+    @PutMapping("/subjects/{subjectId}")
+    public String updateSubjectInfo(@PathVariable long subjectId, @RequestBody CreateSubjectRequest createSubjectRequest){
+
+        return "OK";
+    }
+
+    /*
+   Purpose: 4. Activate or deactivate a subject
+   */
+    @PutMapping("/subjects/{subjectId}/status")
+    public String updateSubjectStatus(@PathVariable long subjectId, @RequestBody UpdateSubjectStatusRequest updateSubjectStatus){
+        return "OK";
+    }
+
+    /*
+    Purpose: 5. Activate or deactivate a subject
+    */
+    @DeleteMapping("/subjects/{subjectId}")
+    public String deleteSubjectInfo(@PathVariable long subjectId){
+        return "OK";
+    }
+
+    /*
+    Purpose: 6. Add a new chapter to a subject
+    */
+    @PostMapping("/subjects/{subjectId}/chapters")
+    public CreateChapterResponse createChapterInfo(@PathVariable long subjectId, @RequestBody CreateChapterRequest createChapterRequest){
+        CreateChapterResponse chapterResponse = new CreateChapterResponse();
+        return chapterResponse;
+    }
+
+    /*
+    Purpose: 7. Update Chapter
+    */
+    @PostMapping("/chapters/{chapterId}")
+    public String updateChapterInfo(@PathVariable long chapterId, @RequestBody CreateChapterRequest createChapterRequest){
+        return "OK";
+    }
+
+    /*
+    Purpose: 8. Toggle Chapter Status
+    */
+    @PostMapping("/chapters/{chapterId}/status")
+    public String updateChapterInfo(@PathVariable long chapterId, @RequestBody ToggleChapterStatusRequest toggleChapterStatusRequest){
+        return "OK";
+    }
+
+    /*
+    Purpose: Delete a chapter from a subject
+    */
+    @DeleteMapping("/chapters/{chapterId}")
+    public String deleteChapterInfo(@PathVariable long chapterId){
+        return "OK";
+    }
+
+    /*
+    Purpose: Update chapter order indices
+    */
+    @PostMapping("/subjects/{subjectId}/chapters/reorder")
+    public CreateChapterResponse updateChapterOrderIndices(@PathVariable long subjectId, @RequestBody List<OrderChapterRequest> orderChapterRequestList){
+        CreateChapterResponse chapterResponse = new CreateChapterResponse();
+        return chapterResponse;
+    }
 
 
 }

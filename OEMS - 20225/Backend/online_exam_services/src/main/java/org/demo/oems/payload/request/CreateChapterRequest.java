@@ -7,12 +7,12 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateUserRequest {
+public class CreateChapterRequest {
 
-    private String name;
+        private String name;
 
-    private String email;
+        private String description;
 
-    private String role;
+        private boolean isActive;
 
 }

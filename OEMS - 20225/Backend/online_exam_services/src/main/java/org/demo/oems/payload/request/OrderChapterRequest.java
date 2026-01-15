@@ -7,12 +7,10 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateUserRequest {
+public class OrderChapterRequest {
 
-    private String name;
+    private long id;
 
-    private String email;
-
-    private String role;
+    private int orderIndex;
 
 }

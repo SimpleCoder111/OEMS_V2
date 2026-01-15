@@ -27,9 +27,6 @@ public class ClassDomain {
     @Column(name = "class_end")
     private LocalDateTime classEnd;
 
-    @Column(name = "class_status")
-    private String classStatus;
-
     @Column(name = "year")
     private String classYear;
 

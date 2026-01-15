@@ -7,12 +7,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateUserRequest {
+public class ToggleChapterStatusRequest {
 
-    private String name;
-
-    private String email;
-
-    private String role;
+    private boolean isActive;
 
 }

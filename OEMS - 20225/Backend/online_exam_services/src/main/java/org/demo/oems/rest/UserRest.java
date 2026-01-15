@@ -2,12 +2,13 @@ package org.demo.oems.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.oems.domain.ClassDomain;
 import org.demo.oems.domain.UserInfoDomain;
-import org.demo.oems.payload.request.CreateClassInfoRequest;
+import org.demo.oems.payload.response.CreateUserResponse;
+import org.demo.oems.payload.response.GenerateInviteCodeResponse;
+import org.demo.oems.payload.response.SendInviteEmailResponse;
+import org.demo.oems.payload.response.UserListsResponse;
 import org.demo.oems.payload.request.CreateUserRequest;
 import org.demo.oems.payload.response.UserProfileResponse;
-import org.demo.oems.repository.UserInfoRepo;
 import org.demo.oems.service.UserService;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
@@ -15,7 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class UserRest {
@@ -87,6 +90,40 @@ public class UserRest {
             logger.error("Exception Happen While Start Get User Profile Controller {}", e.getMessage());
             return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
         }
+    }
+
+    @GetMapping("/users")
+    public UserListsResponse getAllUsers(){
+        return new UserListsResponse();
+    }
+
+    @PostMapping("/users")
+    public CreateUserResponse createUsers(@RequestBody org.demo.oems.payload.admin.request.CreateUserRequest createUserRequest){
+        return new CreateUserResponse();
+    }
+
+    @PutMapping("/users/{userId}")
+    public ResponseEntity<Map<String, Object>> updateUser(@PathVariable String userId, @RequestBody UpdateUserRequest updateUserRequest){
+        Map<String, Object> apiResponse = new HashMap<>();
+        apiResponse.put("status", "0");
+        apiResponse.put("messages", "success");
+        return ResponseEntity.ok(apiResponse);
+    }
+
+    @PutMapping("/users/{userId}/status")
+    public String updateUserStatus(@PathVariable String userId, @RequestBody ToggleUserStatusRequest toggleUserStatusRequest){
+        return "OK";
+    }
+
+    //Send Invite Email
+    @PostMapping("/users/{userId}/invite")
+    public SendInviteEmailResponse sendInviteEmail(@PathVariable String userId, @RequestBody SendInviteEmailRequest sendInviteEmailRequest ){
+        return new SendInviteEmailResponse();
+    }
+
+    @PostMapping("/invite-codes")
+    public GenerateInviteCodeResponse generateInviteCode(){
+        return new GenerateInviteCodeResponse();
     }
 
 }

@@ -42,7 +42,7 @@ public class ClassroomService {
 
             String classStatus = DateUtils.getClassStatus(classStart, classEnd);
             logger.debug("Class Status :: {}", classStatus);
-            newClassInfo.setClassStatus(classStatus);
+
 
             classRepo.save(newClassInfo);
             finalResponse = ResponseUtils.responseFormatUtils("0", "success");

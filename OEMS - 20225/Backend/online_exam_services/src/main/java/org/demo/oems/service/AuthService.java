@@ -12,6 +12,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import static org.demo.oems.utils.CommonConstant.LOG_PREFIX_EXCEPTION_IN_SERVICE;
+
 @Service
 public class AuthService {
 
@@ -59,7 +61,7 @@ public class AuthService {
            authResponse.setMessages("Either User or Password Not Correct!!!");
            return authResponse;
         }catch (Exception e){
-            logger.error("Exception :: {}", e.getMessage());
+            logger.error(LOG_PREFIX_EXCEPTION_IN_SERVICE, "Login Authentication Service", e.getMessage());
             authResponse.setStatus("500");
             authResponse.setMessages(e.getMessage());
             return authResponse;

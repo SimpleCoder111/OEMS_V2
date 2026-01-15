@@ -7,12 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateUserRequest {
-
-    private String name;
-
-    private String email;
-
-    private String role;
-
+public class SendInviteEmailRequest {
+    private String userId;
 }
