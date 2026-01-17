@@ -12,13 +12,13 @@ public class QuestionBankDomain {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private long id;
+    private Long id;
 
     @Column(name = "subject_id")
-    private long subjectId;
+    private Long subjectId;
 
     @Column(name = "chapter_id")
-    private long chapterId;
+    private Long chapterId;
 
     @Column(name = "question_type")
     private String questionType;

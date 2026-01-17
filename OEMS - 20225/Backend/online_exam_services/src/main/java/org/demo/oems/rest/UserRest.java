@@ -3,6 +3,9 @@ package org.demo.oems.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.UserInfoDomain;
+import org.demo.oems.payload.request.SendInviteEmailRequest;
+import org.demo.oems.payload.request.ToggleUserStatusRequest;
+import org.demo.oems.payload.request.UpdateUserRequest;
 import org.demo.oems.payload.response.CreateUserResponse;
 import org.demo.oems.payload.response.GenerateInviteCodeResponse;
 import org.demo.oems.payload.response.SendInviteEmailResponse;
@@ -21,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/api/v1/users")
 public class UserRest {
 
     private final Logger logger = LogManager.getLogger(UserRest.class);
@@ -44,7 +48,7 @@ public class UserRest {
     }
 
     @GetMapping("/getUserListsByRoleId/{roleId}")
-    public ResponseEntity<?> getUserListsByRoleId(@PathVariable int roleId){
+    public ResponseEntity<?> getUserListsByRoleId(@PathVariable Long roleId){
         try{
             logger.info("Start Get User Lists By Role ID :: {}", roleId);
             List<UserInfoDomain> userInfoDomainList = userService.getUserInfoListsByRoleId(roleId);
@@ -92,17 +96,17 @@ public class UserRest {
         }
     }
 
-    @GetMapping("/users")
+    @GetMapping("")
     public UserListsResponse getAllUsers(){
         return new UserListsResponse();
     }
 
-    @PostMapping("/users")
-    public CreateUserResponse createUsers(@RequestBody org.demo.oems.payload.admin.request.CreateUserRequest createUserRequest){
+    @PostMapping("")
+    public CreateUserResponse createUsers(@RequestBody CreateUserRequest createUserRequest){
         return new CreateUserResponse();
     }
 
-    @PutMapping("/users/{userId}")
+    @PutMapping("/{userId}")
     public ResponseEntity<Map<String, Object>> updateUser(@PathVariable String userId, @RequestBody UpdateUserRequest updateUserRequest){
         Map<String, Object> apiResponse = new HashMap<>();
         apiResponse.put("status", "0");
@@ -110,13 +114,13 @@ public class UserRest {
         return ResponseEntity.ok(apiResponse);
     }
 
-    @PutMapping("/users/{userId}/status")
+    @PutMapping("/{userId}/status")
     public String updateUserStatus(@PathVariable String userId, @RequestBody ToggleUserStatusRequest toggleUserStatusRequest){
         return "OK";
     }
 
     //Send Invite Email
-    @PostMapping("/users/{userId}/invite")
+    @PostMapping("/{userId}/invite")
     public SendInviteEmailResponse sendInviteEmail(@PathVariable String userId, @RequestBody SendInviteEmailRequest sendInviteEmailRequest ){
         return new SendInviteEmailResponse();
     }

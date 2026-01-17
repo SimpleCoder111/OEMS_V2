@@ -1,5 +1,6 @@
 package org.demo.oems.domain;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -21,7 +22,7 @@ public class UserInfoDomain implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id;
+    private Long id;
 
     @Column(name = "user_id", length = 10, nullable = false, unique = true)
     private String userId;  // Login identifier (username)
@@ -32,6 +33,7 @@ public class UserInfoDomain implements UserDetails {
     @Column(nullable = false, length = 256)
     private String password;  // BCrypt hashed
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 

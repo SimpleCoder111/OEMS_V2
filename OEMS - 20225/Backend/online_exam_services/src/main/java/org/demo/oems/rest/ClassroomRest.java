@@ -10,7 +10,7 @@ import org.demo.oems.payload.response.TeacherListResponse;
 import org.demo.oems.payload.request.CreateNewClassRequest;
 import org.demo.oems.payload.request.CreateClassInfoRequest;
 import org.demo.oems.service.ClassroomService;
-import org.demo.oems.utils.CommonConstant;
+import org.demo.oems.utils.CommonConstantUtils;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +22,7 @@ import java.util.List;
 
 
 @RestController
-@RequestMapping("/api/v1/classroom")
+@RequestMapping("/api/v1/classes")
 public class ClassroomRest {
     private final Logger logger = LogManager.getLogger(ClassroomRest.class);
     private final ClassroomService classroomService;
@@ -60,7 +60,7 @@ public class ClassroomRest {
         Query params: Optional filters (status, year, search)
      */
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/classes")
+    @GetMapping("")
     public List<ClassListsResponse> getAllClasses(){
         List<ClassListsResponse> classListsResponses = new ArrayList<>();
         return classListsResponses;
@@ -92,7 +92,7 @@ public class ClassroomRest {
     Purpose: Get all students enrolled in a specific class
      */
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
-    @GetMapping("/classes/{classId}/enrollments")
+    @GetMapping("/{classId}/enrollments")
     public List<EnrollmentsResponse> getAllStudentEnrolledInClass(@PathVariable long classId){
         List<EnrollmentsResponse> enrollmentLists = new ArrayList<>();
 
@@ -103,7 +103,7 @@ public class ClassroomRest {
     Purpose: Create a new class
      */
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/classes")
+    @PostMapping("")
     public String createNewClass(@RequestBody CreateNewClassRequest createNewClassRequest){
         return "OK";
     }
@@ -112,7 +112,7 @@ public class ClassroomRest {
     Purpose: Edit class details
     */
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/classes/{classId}")
+    @PutMapping("/{classId}")
     public String updateClassInfo(@PathVariable long classId, @RequestBody CreateNewClassRequest createNewClassRequest){
         return "OK";
     }
@@ -121,7 +121,7 @@ public class ClassroomRest {
     Purpose: Delete class details
     */
     @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/classes/{classId}")
+    @DeleteMapping("/{classId}")
     public String deleteClass(@PathVariable long classId){
         return "OK";
     }
@@ -130,7 +130,7 @@ public class ClassroomRest {
     Purpose: Manage student enrollment (replaces all enrollments for the class)
    */
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
-    @PutMapping("/classes/{classId}/enrollments")
+    @PutMapping("/{classId}/enrollments")
     public ResponseEntity<List<EnrollmentsResponse>> updateClassEnrollments(@RequestBody long classId){
         List<EnrollmentsResponse> enrollmentsResponses = new ArrayList<>();
         try {
@@ -138,7 +138,7 @@ public class ClassroomRest {
 
             return ResponseEntity.ok(enrollmentsResponses);
         }catch (Exception e){
-            logger.error(CommonConstant.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Update Class Enrollment", e.getMessage());
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Update Class Enrollment", e.getMessage());
             return ResponseEntity.internalServerError().body(enrollmentsResponses);
         }
     }

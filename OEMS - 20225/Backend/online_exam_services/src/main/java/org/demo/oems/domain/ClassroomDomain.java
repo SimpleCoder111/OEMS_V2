@@ -10,10 +10,10 @@ public class ClassroomDomain {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id")
-    private long clasroomId;
+    private Long clasroomId;
 
     @Column(name = "class_id")
-    private long classId;
+    private Long classId;
 
     @Column(name = "student_id")
     private String studentId;

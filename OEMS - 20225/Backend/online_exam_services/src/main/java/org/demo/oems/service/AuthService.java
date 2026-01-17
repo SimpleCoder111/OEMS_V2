@@ -12,7 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import static org.demo.oems.utils.CommonConstant.LOG_PREFIX_EXCEPTION_IN_SERVICE;
+import static org.demo.oems.utils.CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE;
 
 @Service
 public class AuthService {

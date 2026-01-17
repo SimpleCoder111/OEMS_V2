@@ -16,10 +16,10 @@ public class OptionBankDomain {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private long id;
+    private Long id;
 
     @Column(name = "question_id")
-    private long questionId;
+    private Long questionId;
 
     @Column(name = "option_text")
     private String optionText;

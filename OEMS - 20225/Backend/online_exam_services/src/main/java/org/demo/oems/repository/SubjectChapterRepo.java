@@ -9,6 +9,6 @@ import java.util.Optional;
 public interface SubjectChapterRepo  extends JpaRepository<SubjectChapterDomain, Long>{
     List<SubjectChapterDomain> findSubjectChapterDomainsBySubjectId(Long subjectId);
 
-    Optional<SubjectChapterDomain> findSubjectChapterDomainById(long chapterId);
+    Optional<SubjectChapterDomain> findSubjectChapterDomainById(Long chapterId);
 
 }

@@ -13,7 +13,7 @@ public class ClassDomain {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id")
-    private long classId;
+    private Long classId;
 
     @Column(name = "class_name")
     private String className;

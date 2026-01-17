@@ -1,5 +1,6 @@
 package org.demo.oems.service;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.RoleDomain;
@@ -26,10 +27,14 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class UserService implements UserDetailsService {
+
     private final UserInfoRepo userInfoRepo;
 
     private final PasswordEncoder passwordEncoder;
+
+    private final UserIdGeneratorService userIdGeneratorService;
 
     private final Logger logger = LogManager.getLogger(UserService.class);
 
@@ -38,10 +43,6 @@ public class UserService implements UserDetailsService {
     @Value("${app.upload.profile-dir}")
     private String profileUploadDir;
 
-    public UserService(UserInfoRepo userInfoRepo, PasswordEncoder passwordEncoder) {
-        this.userInfoRepo = userInfoRepo;
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -50,26 +51,28 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
-
     public JSONObject createUser(CreateUserRequest request){
         JSONObject apiResponse = new JSONObject();
 
         try{
             logger.debug("Creat User Service :: {}", request);
 
-            boolean isUserExist = checkIfUserIdExist(request.getUserId());
+            String randomUniqueUserId =  userIdGeneratorService.generateStudentId();
+            logger.debug("Generate Random User ID :: {}", randomUniqueUserId);
+
+            boolean isUserExist = checkIfUserIdExist(randomUniqueUserId);
 
             if(isUserExist){
-                logger.debug("User Already Exists :: {}", request.getUserId());
+                logger.debug("User Already Exists :: {}", randomUniqueUserId);
                 apiResponse = ResponseUtils.responseFormatUtils("1", "User Already Exists");
                 return apiResponse;
             }
 
             String hashedPassword = passwordEncoder.encode(request.getPassword());
             request.setPassword(hashedPassword);
+            request.setUserId(randomUniqueUserId);
 
             UserInfoDomain newUser = getUserInfoDomain(request);
-
             userInfoRepo.save(newUser);
 
             apiResponse = ResponseUtils.responseFormatUtils("0", "Successfully Create User");
@@ -88,7 +91,7 @@ public class UserService implements UserDetailsService {
         newUser.setUserId(request.getUserId());
         newUser.setName(request.getName());
         newUser.setPassword(request.getPassword());
-        newUser.setDateOfBirth(request.getDateOfBirth());
+        newUser.setDateOfBirth(request.getDob());
         newUser.setGender(request.getGender());
 
         RoleDomain roleDomain = new RoleDomain();
@@ -101,7 +104,7 @@ public class UserService implements UserDetailsService {
         return newUser;
     }
 
-    public List<UserInfoDomain> getUserInfoListsByRoleId(int roleId){
+    public List<UserInfoDomain> getUserInfoListsByRoleId(Long roleId){
         List<UserInfoDomain> userInfoDomainList = new ArrayList<>();
         try{
             logger.debug("Get User Info Lists By Role ID Service :: {}", roleId);
@@ -183,7 +186,7 @@ public class UserService implements UserDetailsService {
                     user.getProfileImageUrl()
             );
         }catch (Exception e){
-            logger.error("Exception while upload user profile image :: " + userProfileResponse);
+            logger.error("Exception while upload user profile image :: {}", userProfileResponse);
             return userProfileResponse;
         }
     }
@@ -199,7 +202,6 @@ public class UserService implements UserDetailsService {
         if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) {
             throw new IllegalArgumentException("Only JPEG or PNG images allowed");
         }
-
         // Generate unique filename
         return contentType.equals("image/jpeg") ? ".jpg" : ".png";
     }

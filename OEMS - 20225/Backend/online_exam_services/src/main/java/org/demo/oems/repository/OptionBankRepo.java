@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface OptionBankRepo extends JpaRepository<OptionBankDomain, Long> {
 
-    List<OptionBankDomain> getOptionBankDomainsByQuestionId(long questionId);
+    List<OptionBankDomain> getOptionBankDomainsByQuestionId(Long questionId);
 
 }
