@@ -54,17 +54,35 @@ public class DashboardRest {
     Query params: Optional limit (e.g., ?limit=10)
     */
     @GetMapping("/activities")
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public List<RecentActivitiesResponse> getRecentActivities(@RequestParam int limit){
         List<RecentActivitiesResponse> recentActivitiesResponseLists = new ArrayList<>();
+
+        try {
+            logger.debug("Trying to Get Dashboard Recent User Activities");
+            recentActivitiesResponseLists = dashboardService.getDashboardRecentActivities();
+
+        }catch (Exception e){
+            logger.error(LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Recent User Activities", e.getMessage());
+        }
+
+
 
         return recentActivitiesResponseLists;
     }
 
     @GetMapping("/grades")
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public List<GradeDistributionResponse> getGradeDistribution(){
         List<GradeDistributionResponse> gradeDistributionResponses = new ArrayList<>();
+
+        try {
+            logger.debug("Trying to Get Dashboard Grade Distribution");
+            gradeDistributionResponses = dashboardService.getOverallGradeDistribution();
+
+        }catch (Exception e){
+            logger.error(LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Recent User Activities", e.getMessage());
+        }
 
         return gradeDistributionResponses;
     }

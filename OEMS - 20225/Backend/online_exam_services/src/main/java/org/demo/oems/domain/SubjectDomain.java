@@ -1,8 +1,8 @@
+// SubjectDomain & ChapterDomain – Minor improvements (no changes needed for core logic)
 package org.demo.oems.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Data
 @RequiredArgsConstructor
 public class SubjectDomain {
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
@@ -24,8 +25,11 @@ public class SubjectDomain {
     private String description;
 
     @Column(name = "subject_status")
-    private String status;
+    private String status = "active";
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -64,7 +63,7 @@ public class UserService implements UserDetailsService {
 
             if(isUserExist){
                 logger.debug("User Already Exists :: {}", randomUniqueUserId);
-                apiResponse = ResponseUtils.responseFormatUtils("1", "User Already Exists");
+                apiResponse = ResponseUtils.formatServiceResponse("1", "User Already Exists");
                 return apiResponse;
             }
 
@@ -75,12 +74,12 @@ public class UserService implements UserDetailsService {
             UserInfoDomain newUser = getUserInfoDomain(request);
             userInfoRepo.save(newUser);
 
-            apiResponse = ResponseUtils.responseFormatUtils("0", "Successfully Create User");
+            apiResponse = ResponseUtils.formatServiceResponse("0", "Successfully Create User");
             logger.debug(LOG_PREFIX_FINAL_SERVICES_RESPONSE, apiResponse);
             return apiResponse;
         }catch (Exception e){
             logger.error("Exception while trying to added new subject :: {}", e.getMessage());
-            apiResponse = ResponseUtils.responseFormatUtils("1", e.getMessage());
+            apiResponse = ResponseUtils.formatServiceResponse("1", e.getMessage());
             return apiResponse;
         }
     }

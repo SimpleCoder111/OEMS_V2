@@ -18,6 +18,9 @@ public class ClassDomain {
     @Column(name = "class_name")
     private String className;
 
+    @Column(name = "subject_id")
+    private Long subjectId;
+
     @Column(name = "teacher_id")
     private String teacherId;
 
@@ -27,7 +30,9 @@ public class ClassDomain {
     @Column(name = "class_end")
     private LocalDateTime classEnd;
 
-    @Column(name = "year")
-    private String classYear;
+    // Belongs to one group (e.g., 9A)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", nullable = false)
+    private ClassGroupDomain classGroup;
 
 }

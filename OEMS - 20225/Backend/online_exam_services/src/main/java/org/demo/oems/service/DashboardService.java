@@ -3,8 +3,9 @@ package org.demo.oems.service;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.demo.oems.domain.RoleDomain;
 import org.demo.oems.payload.response.DashboardStatisticResponse;
+import org.demo.oems.payload.response.GradeDistributionResponse;
+import org.demo.oems.payload.response.RecentActivitiesResponse;
 import org.demo.oems.repository.ExamRepo;
 import org.demo.oems.repository.RoleRepo;
 import org.demo.oems.repository.SubjectRepo;
@@ -12,7 +13,8 @@ import org.demo.oems.repository.UserInfoRepo;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.demo.oems.utils.CommonConstantUtils.*;
 
@@ -94,6 +96,36 @@ public class DashboardService {
         return sign + String.format("%.0f%%", change);
     }
 
+    public List<GradeDistributionResponse> getOverallGradeDistribution(){
+        List<GradeDistributionResponse> serviceResponse = new ArrayList<>();
+
+        GradeDistributionResponse gradeDistributionResponse = new GradeDistributionResponse();
+
+        String grade = "A";
+        int count = 0;
+        int percentage = 0;
+
+        gradeDistributionResponse.setGrade(grade);
+        gradeDistributionResponse.setCount(count);
+        gradeDistributionResponse.setPercentage(percentage);
+
+        serviceResponse.add(gradeDistributionResponse);
+
+        return serviceResponse;
+    }
 
 
+    public List<RecentActivitiesResponse> getDashboardRecentActivities() {
+        List<RecentActivitiesResponse> serviceResponse = new ArrayList<>();
+        RecentActivitiesResponse recentActivitiesResponse = new RecentActivitiesResponse();
+
+        recentActivitiesResponse.setAction("");
+        recentActivitiesResponse.setId("");
+        recentActivitiesResponse.setUser("");
+        recentActivitiesResponse.setTimestamp("2026-01-17");
+        recentActivitiesResponse.setSubject("");
+
+        return serviceResponse;
+
+    }
 }

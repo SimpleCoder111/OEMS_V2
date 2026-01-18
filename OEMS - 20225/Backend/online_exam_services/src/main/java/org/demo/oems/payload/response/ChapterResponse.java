@@ -13,7 +13,6 @@ public class ChapterResponse {
 
     private String name;
 
-    private String description;
 
     private int orderIndex;
 

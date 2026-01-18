@@ -2,22 +2,29 @@ package org.demo.oems.service;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.poi.ss.usermodel.*;
 import org.demo.oems.domain.OptionBankDomain;
 import org.demo.oems.domain.QuestionBankDomain;
-import org.demo.oems.domain.SubjectChapterDomain;
+import org.demo.oems.domain.ChapterDomain;
 import org.demo.oems.domain.SubjectDomain;
 import org.demo.oems.payload.request.OptionBankInsertRequest;
 import org.demo.oems.payload.request.QuestionBankInsertRequest;
 import org.demo.oems.payload.response.OptionListResponse;
 import org.demo.oems.payload.response.QuestionBankListsResponse;
+import org.demo.oems.payload.response.QuestionImportResponse;
 import org.demo.oems.repository.OptionBankRepo;
 import org.demo.oems.repository.QuestionBankRepo;
 import org.demo.oems.repository.SubjectChapterRepo;
 import org.demo.oems.repository.SubjectRepo;
+import org.demo.oems.utils.CommonConstantUtils;
 import org.demo.oems.utils.ResponseUtils;
 import org.json.simple.JSONObject;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -61,15 +68,15 @@ public class QuestionBankService {
             for (QuestionBankDomain questionBankDomain : questionBankDomainList) {
                 QuestionBankListsResponse questionResponse = new QuestionBankListsResponse();
 
-                questionResponse.setQuestionType(questionBankDomain.getQuestionType());
+                questionResponse.setQuestionType(String.valueOf(questionBankDomain.getQuestionType()));
                 questionResponse.setQuestionId(questionBankDomain.getId());
                 questionResponse.setQuestionContent(questionBankDomain.getQuestionContent());
-                questionResponse.setDifficulty(questionBankDomain.getDifficulty());
+                questionResponse.setDifficulty(String.valueOf(questionBankDomain.getDifficulty()));
                 questionResponse.setCreatedBy(questionBankDomain.getCreatedBy());
 
-                Optional<SubjectChapterDomain> chapterDomainOptional = chapterRepo.findSubjectChapterDomainById(questionBankDomain.getChapterId());
+                Optional<ChapterDomain> chapterDomainOptional = chapterRepo.findSubjectChapterDomainById(questionBankDomain.getChapter().getId());
                 if(chapterDomainOptional.isPresent()){
-                    SubjectChapterDomain chapterDomain = chapterDomainOptional.get();
+                    ChapterDomain chapterDomain = chapterDomainOptional.get();
                     questionResponse.setChapterId(chapterDomain.getId());
                     questionResponse.setChapter(chapterDomain.getChapter());
                 }
@@ -83,13 +90,13 @@ public class QuestionBankService {
 
 
             }
-            finalResponse = ResponseUtils.responseFormatUtils("0", "Success");
+            finalResponse = ResponseUtils.formatServiceResponse("0", "Success");
             finalResponse.put("questionData", questionListsResponse);
             finalResponse.put("subjectId", subjectId);
             finalResponse.put("subjectName", subjectInfo.getSubjectName());
         }catch (Exception e){
             logger.error("Exception Get All Question Banks By Subject Services :: {}", e.getMessage());
-            finalResponse = ResponseUtils.responseFormatUtils("1", e.getMessage());
+            finalResponse = ResponseUtils.formatServiceResponse("1", e.getMessage());
         }
 
         return finalResponse;
@@ -119,11 +126,11 @@ public class QuestionBankService {
         String responseMessage;
         try{
             QuestionBankDomain newQuestionBank = new QuestionBankDomain();
-            newQuestionBank.setQuestionType(requestPayload.getQuestionType());
+            newQuestionBank.setQuestionType(QuestionBankDomain.QuestionType.valueOf(requestPayload.getQuestionType()));
             newQuestionBank.setQuestionContent(requestPayload.getQuestionContent());
-            newQuestionBank.setDifficulty(requestPayload.getDifficulty());
+            newQuestionBank.setDifficulty(QuestionBankDomain.Difficulty.valueOf(requestPayload.getDifficulty()));
             newQuestionBank.setCreatedBy(requestPayload.getCreatedBy());
-            newQuestionBank.setSubjectId(requestPayload.getSubjectId());
+//            newQuestionBank.setSubjectId(requestPayload.getSubjectId());
 
             questionBankRepo.save(newQuestionBank);
 
@@ -159,7 +166,7 @@ public class QuestionBankService {
 
             if(arraySize == 0){
                 logger.debug("Array Size is 0");
-                addQuestionBankResponse = ResponseUtils.responseFormatUtils("0", "No new records to insert");
+                addQuestionBankResponse = ResponseUtils.formatServiceResponse("0", "No new records to insert");
                 return addQuestionBankResponse;
             }
 
@@ -172,14 +179,14 @@ public class QuestionBankService {
 
             responseStatus = "0";
             responseMessage = "Successfully Insert " + recordSaveCount + " records" ;
-            addQuestionBankResponse = ResponseUtils.responseFormatUtils(responseStatus, responseMessage);
+            addQuestionBankResponse = ResponseUtils.formatServiceResponse(responseStatus, responseMessage);
 
         }catch (Exception e){
             logger.error("Exception while add question banks :: {}" , e.getMessage());
             responseStatus = "1";
             responseMessage = e.getMessage();
 
-            addQuestionBankResponse = ResponseUtils.responseFormatUtils(responseStatus, responseMessage);
+            addQuestionBankResponse = ResponseUtils.formatServiceResponse(responseStatus, responseMessage);
         }
 
         return  addQuestionBankResponse;
@@ -192,12 +199,17 @@ public class QuestionBankService {
             QuestionBankInsertRequest questionBank = questionLists.get(questionBankIndex);
 
             QuestionBankDomain newQuestionBank = new QuestionBankDomain();
-            newQuestionBank.setQuestionType(questionBank.getQuestionType());
+            newQuestionBank.setQuestionType(QuestionBankDomain.QuestionType.valueOf(questionBank.getQuestionType()));
             newQuestionBank.setQuestionContent(questionBank.getQuestionContent());
-            newQuestionBank.setDifficulty(questionBank.getDifficulty());
+            newQuestionBank.setDifficulty(QuestionBankDomain.Difficulty.valueOf(questionBank.getDifficulty()));
             newQuestionBank.setCreatedBy(questionBank.getCreatedBy());
-            newQuestionBank.setSubjectId(questionBank.getSubjectId());
-            newQuestionBank.setChapterId(questionBank.getChapterId());
+
+            Optional<SubjectDomain> subjectOpt = subjectRepo.findById(questionBank.getSubjectId());
+
+            subjectOpt.ifPresent(newQuestionBank::setSubject);
+
+            Optional<ChapterDomain> chapterOpt = chapterRepo.findById(questionBank.getChapterId());
+            chapterOpt.ifPresent(newQuestionBank::setChapter);
 
             int optionListSize = questionBank.getOptionLists().size();
 
@@ -219,5 +231,182 @@ public class QuestionBankService {
         }catch (Exception e){
             logger.error("Exception while saving questions and option banks :: {}", e.getMessage());
         }
+    }
+
+    public void deleteQuestionAndOptionBank(Long questionId){
+        try{
+            Optional<QuestionBankDomain> questionBankOptional = questionBankRepo.findById(questionId);
+
+            if(questionBankOptional.isPresent()){
+                QuestionBankDomain questionBank = questionBankOptional.get();
+
+                long optionCount = optionBankRepo.countByQuestionId(questionBank.getId());
+                logger.debug("Going to delete {} options related to question ID :: {}", optionCount, questionId);
+                optionBankRepo.deleteByQuestionId(questionBank.getId());
+
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Delete Question and Option Bank", e.getMessage());
+        }
+    }
+
+
+    @Transactional
+    public QuestionImportResponse importQuestions(MultipartFile file, Long subjectId, String createdUserId) {
+        List<String> errors = new ArrayList<>();
+        int imported = 0;
+        int rowNum = 0;  // Header is row 0
+
+        // Validate subject exists early
+        SubjectDomain subject = subjectRepo.findById(subjectId)
+                .orElseThrow(() -> new IllegalArgumentException("Subject not found with ID: " + subjectId));
+
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            for (Row row : sheet) {
+                rowNum++;
+                if (rowNum == 1) continue;  // Skip header row
+
+                try {
+                    String questionText = getCellValue(row.getCell(0));
+                    String typeStr = getCellValue(row.getCell(1)).toUpperCase();
+                    String difficultyStr = getCellValue(row.getCell(2)).toUpperCase();
+                    String chapterName = getCellValue(row.getCell(3));  // Column 4 = chapter (skip topic column 3)
+                    String optionA = getCellValue(row.getCell(5));
+                    String optionB = getCellValue(row.getCell(6));
+                    String optionC = getCellValue(row.getCell(7));
+                    String optionD = getCellValue(row.getCell(8));
+                    String correctAnswer = getCellValue(row.getCell(9));
+
+                    // Basic validation
+                    if (questionText == null || questionText.isBlank()) {
+                        errors.add("Row " + rowNum + ": Question text is required");
+                        continue;
+                    }
+                    if (typeStr.isBlank()) {
+                        errors.add("Row " + rowNum + ": Question type is required");
+                        continue;
+                    }
+                    if (chapterName == null || chapterName.isBlank()) {
+                        errors.add("Row " + rowNum + ": Chapter is required");
+                        continue;
+                    }
+
+                    // Find or create chapter under the subject
+                    ChapterDomain chapter = chapterRepo.findByChapterEqualsIgnoreCaseAndSubjectId(chapterName, subjectId)
+                            .orElseGet(() -> {
+                                ChapterDomain newChapter = new ChapterDomain();
+                                newChapter.setSubject(subject);
+                                newChapter.setChapter(chapterName);
+                                newChapter.setChapterIndex(0);  // Or auto-generate
+                                newChapter.setChapterStatus("active");
+                                return chapterRepo.save(newChapter);
+                            });
+
+                    // Create question
+                    QuestionBankDomain question = new QuestionBankDomain();
+                    question.setQuestionContent(questionText);
+                    question.setQuestionType(QuestionBankDomain.QuestionType.valueOf(typeStr));
+                    question.setDifficulty(QuestionBankDomain.Difficulty.valueOf(difficultyStr));
+                    question.setSubject(subject);
+                    question.setChapter(chapter);
+                    question.setCreatedBy(createdUserId);  // Or pass from auth
+                    question.setCreatedAt(LocalDateTime.now());
+
+                    // Save question first to get ID (needed for options)
+                    question = questionBankRepo.save(question);
+
+                    QuestionBankDomain.QuestionType type = question.getQuestionType();
+
+                    // Handle options and correct answer based on type
+                    // In importQuestions method (replace option handling)
+                    if (type == QuestionBankDomain.QuestionType.MULTIPLE_CHOICE) {
+                        OptionBankDomain optA = createOption(question, "A", optionA);
+                        OptionBankDomain optB = createOption(question, "B", optionB);
+                        OptionBankDomain optC = createOption(question, "C", optionC);
+                        OptionBankDomain optD = createOption(question, "D", optionD);
+
+                        // Set correct one
+                        switch (correctAnswer.toUpperCase()) {
+                            case "A" -> optA.setIsCorrect(true);
+                            case "B" -> optB.setIsCorrect(true);
+                            case "C" -> optC.setIsCorrect(true);
+                            case "D" -> optD.setIsCorrect(true);
+                            default -> throw new IllegalArgumentException("Invalid correct answer");
+                        }
+
+                    } else if (type == QuestionBankDomain.QuestionType.TRUE_FALSE) {
+                        OptionBankDomain optTrue = createOption(question, "TRUE", "TRUE");
+                        OptionBankDomain optFalse = createOption(question, "FALSE", "FALSE");
+
+                        if ("TRUE".equalsIgnoreCase(correctAnswer)) {
+                            optTrue.setIsCorrect(true);
+                        } else if ("FALSE".equalsIgnoreCase(correctAnswer)) {
+                            optFalse.setIsCorrect(true);
+                        } else {
+                            throw new IllegalArgumentException("Correct answer must be TRUE or FALSE");
+                        }
+
+                    } // Updated handling for FILL_BLANK – centralized in OptionBankDomain
+                    else if (type == QuestionBankDomain.QuestionType.FILL_BLANK) {
+                        if (correctAnswer == null || correctAnswer.trim().isBlank()) {
+                            errors.add("Row " + rowNum + ": Correct answer is required for fill-in-blank");
+                            questionBankRepo.delete(question);  // Rollback question
+                            continue;
+                        }
+
+                        // Create single "answer" option – centralized like MCQ/TF
+                        OptionBankDomain answerOption = new OptionBankDomain();
+                        answerOption.setQuestionId(question.getId());
+                        answerOption.setOptionLabel("ANSWER");  // Fixed label (or null if you prefer)
+                        answerOption.setOptionText(correctAnswer.trim());
+                        answerOption.setIsCorrect(true);
+
+                        // No longer store in question.correctAnswer
+                        // question.setCorrectAnswer(null);  // Optional: clear if field exists
+                    }
+
+                    // Final save (with correct answer)
+                    questionBankRepo.save(question);
+                    imported++;
+
+                } catch (Exception e) {
+                    errors.add("Row " + rowNum + ": " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read Excel file: " + e.getMessage(), e);
+        }
+
+        return new QuestionImportResponse(imported, errors.size(), errors);
+    }
+
+    // Updated createOption helper
+    private OptionBankDomain createOption(QuestionBankDomain question, String label, String text) {
+        if (text == null || text.isBlank()) return null;
+
+        OptionBankDomain option = new OptionBankDomain();
+        option.setQuestionId(question.getId());
+        option.setOptionLabel(label);
+        option.setOptionText(text);
+        option.setIsCorrect(false);
+        return optionBankRepo.save(option);  // Or collect for batch}
+    }
+
+    private String getCellValue(Cell cell) {
+        if (cell == null) return "";
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue().trim();
+            case NUMERIC -> {
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    yield cell.getDateCellValue().toString();
+                } else {
+                    yield String.valueOf((int) cell.getNumericCellValue());
+                }
+            }
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            default -> "";
+        };
     }
 }

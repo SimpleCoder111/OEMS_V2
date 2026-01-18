@@ -44,6 +44,21 @@ public class DateUtils {
         }
     }
 
+    public static String convertTimestampToString(LocalDateTime date) {
+        try {
+            if (date == null) {
+                return null;
+            }
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss");
+            String formattedDate = date.format(formatter);
+            logger.debug("Formatted Date String :: {}", formattedDate);
+            return formattedDate;
+        } catch (Exception e) {
+            logger.error("Exception while converting date to string :: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public static String getClassStatus(LocalDateTime classStart, LocalDateTime classEnd) {
         try {
             logger.debug("Trying to compare start date and end start utils {} : {}", classStart, classEnd);
@@ -64,4 +79,6 @@ public class DateUtils {
 
         }
     }
+
+
 }

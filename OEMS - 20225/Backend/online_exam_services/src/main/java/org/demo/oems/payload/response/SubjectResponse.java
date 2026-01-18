@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 public class SubjectResponse {
 
-    private String id;
+    private Long id;
 
     private String name;
 

@@ -3,14 +3,12 @@ package org.demo.oems.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.ClassDomain;
-import org.demo.oems.payload.response.ClassListsResponse;
-import org.demo.oems.payload.response.EnrollmentsResponse;
-import org.demo.oems.payload.response.StudentListResponse;
-import org.demo.oems.payload.response.TeacherListResponse;
+import org.demo.oems.payload.response.*;
 import org.demo.oems.payload.request.CreateNewClassRequest;
 import org.demo.oems.payload.request.CreateClassInfoRequest;
 import org.demo.oems.service.ClassroomService;
 import org.demo.oems.utils.CommonConstantUtils;
+import org.demo.oems.utils.ResponseUtils;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -102,10 +101,18 @@ public class ClassroomRest {
     /*
     Purpose: Create a new class
      */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("")
-    public String createNewClass(@RequestBody CreateNewClassRequest createNewClassRequest){
-        return "OK";
+//    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/")
+    public ResponseEntity<Map<String, Object>> createNewClass(@RequestBody CreateNewClassRequest createNewClassRequest){
+        try{
+            ClassDomain newClassDomain = classroomService.createNewClasses(createNewClassRequest);
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("0", "success", newClassDomain);
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*

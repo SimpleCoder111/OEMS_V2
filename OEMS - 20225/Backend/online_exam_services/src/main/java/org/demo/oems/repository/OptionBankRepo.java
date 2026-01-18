@@ -9,4 +9,10 @@ public interface OptionBankRepo extends JpaRepository<OptionBankDomain, Long> {
 
     List<OptionBankDomain> getOptionBankDomainsByQuestionId(Long questionId);
 
+    // Spring Data JPA derived delete query
+    void deleteByQuestionId(Long questionId);
+
+    // Optional: Count before delete for logging
+    long countByQuestionId(Long questionId);
+
 }

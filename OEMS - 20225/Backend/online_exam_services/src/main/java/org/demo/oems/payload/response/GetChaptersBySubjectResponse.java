@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.demo.oems.domain.SubjectChapterDomain;
+import org.demo.oems.domain.ChapterDomain;
 
 import java.util.List;
 
@@ -20,6 +20,6 @@ public class GetChaptersBySubjectResponse {
     private String subjectName;
 
     @JsonProperty("chapterLists")
-    private List<SubjectChapterDomain> subjectChapterDomainList;
+    private List<ChapterDomain> chapterDomainList;
 
 }

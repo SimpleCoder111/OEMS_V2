@@ -5,15 +5,21 @@ import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.SubjectDomain;
 import org.demo.oems.payload.request.*;
 import org.demo.oems.payload.response.CreateChapterResponse;
+import org.demo.oems.payload.response.EnrollmentsResponse;
 import org.demo.oems.payload.response.SubjectResponse;
 import org.demo.oems.service.SubjectService;
+import org.demo.oems.utils.CommonConstantUtils;
+import org.demo.oems.utils.ResponseUtils;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/subjects")
@@ -80,17 +86,24 @@ public class SubjectRest {
     Query params: Optional search filter
      */
     @GetMapping("")
-    public List<SubjectResponse> getAllSubjects(){
-        List<SubjectResponse> subjectResponseList = new ArrayList<>();
-
-        return subjectResponseList;
+    //    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getAllSubjects(){
+        try{
+            List<SubjectResponse> subjectResponseList = subjectService.getAllSubjects();
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("0", "success", subjectResponseList);
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
     Purpose: 2. Add a new subject
      */
     @PostMapping("")
-    public String getAllSubjects(@RequestBody CreateSubjectRequest createSubjectRequest){
+    public String createNewSubject(@RequestBody CreateSubjectRequest createSubjectRequest){
 
         return "OK";
     }
@@ -161,6 +174,22 @@ public class SubjectRest {
         CreateChapterResponse chapterResponse = new CreateChapterResponse();
         return chapterResponse;
     }
+
+//    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @GetMapping("/{teacherId}")
+    public ResponseEntity<Map<String, Object>> getAllSubjectsByTeacherId(@PathVariable String teacherId){
+        try {
+            List<SubjectResponse> subjectResponseList = subjectService.getAllSubjectsByTeacherId(teacherId);
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("0", "success", subjectResponseList);
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Update Class Enrollment", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+
 
 
 }

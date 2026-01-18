@@ -4,7 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.OptionBankDomain;
 import org.demo.oems.domain.QuestionBankDomain;
-import org.demo.oems.domain.SubjectChapterDomain;
+import org.demo.oems.domain.ChapterDomain;
 import org.demo.oems.domain.SubjectDomain;
 import org.demo.oems.payload.request.ExamPaperGenerationRequest;
 import org.demo.oems.payload.response.OptionListResponse;
@@ -65,15 +65,15 @@ public class ExamService {
             for (QuestionBankDomain questionBank : combinedLists) {
                 QuestionBankListsResponse questionResponse = new QuestionBankListsResponse();
 
-                questionResponse.setQuestionType(questionBank.getQuestionType());
+                questionResponse.setQuestionType(String.valueOf(questionBank.getQuestionType()));
                 questionResponse.setQuestionId(questionBank.getId());
                 questionResponse.setQuestionContent(questionBank.getQuestionContent());
-                questionResponse.setDifficulty(questionBank.getDifficulty());
+                questionResponse.setDifficulty(String.valueOf(questionBank.getDifficulty()));
                 questionResponse.setCreatedBy(questionBank.getCreatedBy());
 
-                Optional<SubjectChapterDomain> chapterDomainOptional = chapterRepo.findSubjectChapterDomainById(questionBank.getChapterId());
+                Optional<ChapterDomain> chapterDomainOptional = chapterRepo.findSubjectChapterDomainById(questionBank.getChapter().getId());
                 if(chapterDomainOptional.isPresent()){
-                    SubjectChapterDomain chapterDomain = chapterDomainOptional.get();
+                    ChapterDomain chapterDomain = chapterDomainOptional.get();
                     questionResponse.setChapterId(chapterDomain.getId());
                     questionResponse.setChapter(chapterDomain.getChapter());
                 }
@@ -87,13 +87,13 @@ public class ExamService {
             }
 
 
-            finalResponse = ResponseUtils.responseFormatUtils("0", "success");
+            finalResponse = ResponseUtils.formatServiceResponse("0", "success");
             finalResponse.put("questionData", questionListsResponse);
             finalResponse.put("subjectId", subjectInfo.getId());
             finalResponse.put("subjectName", subjectInfo.getSubjectName());
         }catch (Exception e){
             logger.error("Exception while Generate Exam Paper :: {}" , e.getMessage());
-            finalResponse = ResponseUtils.responseFormatUtils("1", e.getMessage());
+            finalResponse = ResponseUtils.formatServiceResponse("1", e.getMessage());
         }
         return finalResponse;
     }

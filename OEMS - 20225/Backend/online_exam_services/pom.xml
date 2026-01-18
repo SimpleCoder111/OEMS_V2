@@ -71,13 +71,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-<!--        &lt;!&ndash;JWT Token&ndash;&gt;-->
-<!--        <dependency>-->
-<!--            <groupId>io.jsonwebtoken</groupId>-->
-<!--            <artifactId>jjwt-api</artifactId>-->
-<!--            <version>0.11.5</version>-->
-<!--        </dependency>-->
-
         <!-- JJWT API (interfaces) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -99,6 +92,12 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>0.12.6</version>
             <scope>runtime</scope>
+        </dependency>
+        <!-- Excel -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.4.0</version>  <!-- Latest stable -->
         </dependency>
     </dependencies>
 

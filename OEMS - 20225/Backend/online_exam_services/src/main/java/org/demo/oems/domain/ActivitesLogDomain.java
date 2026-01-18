@@ -14,6 +14,9 @@ public class ActivitesLogDomain {
     @Column(name = "id")
     private Long id;
 
+    @Column(name = "user_id")
+    private String userId;
+
     @Column(name = "user_name")
     private String name;
 

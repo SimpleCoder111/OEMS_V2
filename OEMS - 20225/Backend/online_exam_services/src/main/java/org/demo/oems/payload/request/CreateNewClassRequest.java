@@ -15,9 +15,11 @@ public class CreateNewClassRequest {
 
     private String classEnd;
 
-    private String classStatus;
+    private Long subjectId;
 
-    private String classYear;
+    private Long classGroupId;
+
+    private String classStatus;
 
     private String teacherId;
 
