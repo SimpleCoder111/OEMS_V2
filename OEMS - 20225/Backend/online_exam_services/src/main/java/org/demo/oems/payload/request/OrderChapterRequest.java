@@ -11,6 +11,6 @@ public class OrderChapterRequest {
 
     private long id;
 
-    private int orderIndex;
+    private int index;
 
 }

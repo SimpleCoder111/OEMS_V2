@@ -1,17 +1,21 @@
 package org.demo.oems.service;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.AllArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.ChapterDomain;
 import org.demo.oems.domain.ClassDomain;
 import org.demo.oems.domain.SubjectDomain;
-import org.demo.oems.payload.request.CreateSubjectChapter;
-import org.demo.oems.payload.request.CreateSubjectInfoRequest;
+import org.demo.oems.payload.request.*;
 import org.demo.oems.payload.response.ChapterResponse;
 import org.demo.oems.payload.response.GetChaptersBySubjectResponse;
 import org.demo.oems.payload.response.SubjectResponse;
+import org.demo.oems.payload.response.SubjectSummaryResponse;
 import org.demo.oems.repository.ClassRepo;
+import org.demo.oems.repository.QuestionBankRepo;
 import org.demo.oems.repository.SubjectChapterRepo;
 import org.demo.oems.repository.SubjectRepo;
 import org.demo.oems.utils.CommonConstantUtils;
@@ -19,10 +23,10 @@ import org.demo.oems.utils.DateUtils;
 import org.demo.oems.utils.ResponseUtils;
 import org.json.simple.JSONObject;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -34,6 +38,7 @@ public class SubjectService {
     private final ClassRepo classRepo;
 
     private final SubjectChapterRepo chapterRepo;
+    private final QuestionBankRepo questionBankRepo;
 
     public List<SubjectDomain> getSubjectList(){
         return subjectRepo.findAll();
@@ -127,7 +132,7 @@ public class SubjectService {
 
             SubjectDomain subjectInfo = subjectInfoOpt.get();
 
-            List<ChapterDomain> subjectChaptersList = chapterRepo.findSubjectChapterDomainsBySubjectId(subjectId);
+            List<ChapterDomain> subjectChaptersList = chapterRepo.findSubjectChapterDomainsBySubjectIdOrderByChapterIndexAsc(subjectId);
 
             apiResponse = ResponseUtils.formatServiceResponse("0", "Success");
 
@@ -172,7 +177,7 @@ public class SubjectService {
                 subjectResponse.setUpdatedAt(updatedAt);
 
                 List<ChapterResponse> chapterResponseList = new ArrayList<>();
-                List<ChapterDomain> chapterDomainLists = chapterRepo.findSubjectChapterDomainsBySubjectId(subjectDomain.getId());
+                List<ChapterDomain> chapterDomainLists = chapterRepo.findSubjectChapterDomainsBySubjectIdOrderByChapterIndexAsc(subjectDomain.getId());
 
                 logger.debug("Found total chapter for the subject {} :: {}", subjectDomain.getSubjectName(), chapterDomainLists.size());
                 for(ChapterDomain chapterDomain : chapterDomainLists){
@@ -251,5 +256,329 @@ public class SubjectService {
 
         logger.debug("Final Subject Response :: " + subjectResponseList);
         return subjectResponseList;
+    }
+
+    public Map<String, Object> createNewSubject(CreateSubjectRequest createSubjectRequest) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            Optional<SubjectDomain> subjectOptional = subjectRepo.getSubjectDomainBySubjectCodeEqualsIgnoreCase(createSubjectRequest.getCode());
+            if(subjectOptional.isPresent()){
+                logger.error("Subject Code is alreayd existed");
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Subject Code Already Exists", "");
+            }else{
+
+                logger.debug("Prepared Data for create new subject Info");
+                SubjectDomain newSubject = new SubjectDomain();
+
+                newSubject.setSubjectName(createSubjectRequest.getName());
+                newSubject.setSubjectCode(createSubjectRequest.getCode());
+                newSubject.setDescription(createSubjectRequest.getDescription());
+
+                newSubject.setStatus(Boolean.TRUE.equals(createSubjectRequest.getIsActive()) ? "ACTIVE": "INACTIVE");
+
+                LocalDateTime currentTime = LocalDateTime.now();
+                newSubject.setCreatedAt(currentTime);
+                newSubject.setUpdatedAt(currentTime);
+
+                subjectRepo.save(newSubject);
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "success", newSubject);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Create New Subject", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+    public Map<String, Object> editSubjectInfo(long subjectId, CreateSubjectRequest createSubjectRequest) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            Optional<SubjectDomain> subjectOptional = subjectRepo.getSubjectDomainsById(subjectId);
+            if(subjectOptional.isEmpty()){
+                logger.error("Cannot find the subject ID");
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Cannot find subject info", "");
+            }else{
+
+                SubjectDomain subjectDomain = subjectOptional.get();
+                logger.debug("Prepared Data for edit subject Info");
+
+                subjectDomain.setSubjectName(createSubjectRequest.getName());
+                subjectDomain.setSubjectCode(createSubjectRequest.getCode());
+                subjectDomain.setDescription(createSubjectRequest.getDescription());
+
+                subjectDomain.setStatus(Boolean.TRUE.equals(createSubjectRequest.getIsActive()) ? "ACTIVE": "INACTIVE");
+
+                LocalDateTime currentTime = LocalDateTime.now();
+                subjectDomain.setUpdatedAt(currentTime);
+
+                subjectRepo.save(subjectDomain);
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "success", subjectDomain);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Create New Subject", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+
+    @Transactional
+    public Map<String, Object> deleteSubjectAndChapterRelated(long subjectId) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            Optional<SubjectDomain> subjectOptional = subjectRepo.getSubjectDomainsById(subjectId);
+            if(subjectOptional.isEmpty()){
+                logger.error("Cannot find the subject ID");
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Cannot find subject info", "");
+            }else{
+                SubjectDomain subjectDomain = subjectOptional.get();
+
+                int questionCount = questionBankRepo.countBySubject_Id(subjectId);
+                logger.debug("Going to delete {} questions related to the subject", questionCount);
+                questionBankRepo.deleteBySubject_Id(subjectId);
+
+                int chapterCount = chapterRepo.countBySubject_id(subjectId);
+                logger.debug("Going to delete {} chapters related to the subject", chapterCount);
+                chapterRepo.deleteBySubject_Id(subjectDomain.getId());
+
+                logger.debug("Going to delete subject info :: {}", subjectDomain.getId());
+                subjectRepo.deleteById(subjectId);
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Delete", subjectDomain);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Delete Subject", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+    public Map<String, Object> updateSubjectStatus(long subjectId, Boolean isActive) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            Optional<SubjectDomain> subjectOptional = subjectRepo.getSubjectDomainsById(subjectId);
+            if(subjectOptional.isEmpty()){
+                logger.error("Cannot find the subject ID");
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Cannot find subject info", "");
+            }else{
+
+                SubjectDomain subjectDomain = subjectOptional.get();
+                logger.debug("Going to delete subjcet info :: {}", subjectDomain.getId());
+
+                subjectDomain.setStatus(Boolean.TRUE.equals(isActive) ? "ACTIVE": "INACTIVE");
+                LocalDateTime currentTimestamp = LocalDateTime.now();
+                subjectDomain.setUpdatedAt(currentTimestamp);
+
+                subjectRepo.save(subjectDomain);
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Update Subject Status", subjectDomain);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Delete Subject", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+    @Transactional
+    public Map<String, Object> insertNewChaptersForSubject(long subjectId, List<CreateChapterRequest> chapterLists) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        Map<String, Object> data = new HashMap<>();
+        List<ChapterDomain> chapterListResponse = new ArrayList<>();
+
+        try{
+            Optional<SubjectDomain> subjectOptional = subjectRepo.getSubjectDomainsById(subjectId);
+            if(subjectOptional.isEmpty()){
+                logger.error("Cannot find the subject ID");
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Subject Info not found. Please Create Subject Info First !!!", "");
+            }else{
+                SubjectDomain subjectDomain = subjectOptional.get();
+
+                int count = 0;
+                for (CreateChapterRequest chapter : chapterLists) {
+                    ChapterDomain newChapter = new ChapterDomain();
+
+                    newChapter.setSubject(subjectDomain);
+                    newChapter.setChapterIndex(chapter.getIndex());
+                    newChapter.setChapter(chapter.getName());
+                    newChapter.setChapterStatus(checkStatusAndReturnString(chapter.getIsActive()));
+                    newChapter.setChapterDescription(chapter.getDescription());
+
+                    chapterRepo.save(newChapter);
+
+
+                    count++;
+                    logger.debug("successfully insert record :: {}", count);
+                    chapterListResponse.add(newChapter);
+                }
+
+                data.put("subjectId", subjectId);
+                data.put("totalInsert", count);
+                data.put("chapterLists", chapterListResponse);
+                data.put("subjectName", subjectDomain.getSubjectName());
+
+
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Update Subject Status", data);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Delete Subject", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+
+    }
+
+    public static String checkStatusAndReturnString(Boolean isActive){
+        return Boolean.TRUE.equals(isActive) ? "ACTIVE": "INACTIVE";
+    }
+
+    public Map<String, Object> editChapterInfo(long chapterId, CreateChapterRequest newChapterInfo) {
+
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            Optional<ChapterDomain> chapterOptional = chapterRepo.findSubjectChapterDomainById(chapterId);
+            if(chapterOptional.isEmpty()){
+                logger.error("Cannot find the chapter ID");
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Record not found", "");
+            }else{
+                ChapterDomain chapterDomain = chapterOptional.get();
+                logger.debug("Prepared Data for edit chapter Info");
+
+                chapterDomain.setChapter(newChapterInfo.getName());
+                chapterDomain.setChapterIndex(newChapterInfo.getIndex());
+
+                chapterDomain.setChapterStatus(checkStatusAndReturnString(newChapterInfo.getIsActive()));
+                chapterDomain.setChapterDescription(newChapterInfo.getDescription());
+
+                chapterRepo.save(chapterDomain);
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "Successfully updated", chapterDomain);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Create New Subject", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+    public Map<String, Object> updateChapterStatus(long chapterId, Boolean isActive) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            Optional<ChapterDomain> chapterOptional = chapterRepo.findSubjectChapterDomainById(chapterId);
+            if(chapterOptional.isEmpty()){
+                logger.error("Cannot chapter info with ID :: {}", chapterId);
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Record not found", "");
+            }else{
+
+                ChapterDomain chapterDomain = chapterOptional.get();
+                logger.debug("Prepared Data for edit chapter Info");
+
+                chapterDomain.setChapterStatus(checkStatusAndReturnString(isActive));
+                chapterRepo.save(chapterDomain);
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Update Chapter Status", chapterDomain);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Toggle Subject Status", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+
+    @Transactional
+    public Map<String, Object> deleteChapterAndQuestionRelated(long chapterId) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            Optional<ChapterDomain> chapterOptional = chapterRepo.findSubjectChapterDomainById(chapterId);
+            if(chapterOptional.isEmpty()){
+                logger.error("Cannot find the subject ID");
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Cannot find subject info", "");
+            }else{
+
+                ChapterDomain chapterDomain = chapterOptional.get();
+                logger.debug("Going to delete chapter info and question related :: {}", chapterDomain.getId());
+
+                int questionCount = questionBankRepo.countByChapter_Id(chapterId);
+                logger.debug("Going to delete {} questions related to the chapters", questionCount);
+                questionBankRepo.deleteByChapter_Id(chapterId);
+
+                logger.debug("Delete the chapter ID :: {}", chapterId);
+                chapterRepo.deleteById(chapterId);
+
+                serviceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Delete", chapterDomain);
+            }
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Delete Subject", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+    public Map<String, Object> orderChapterIndex(Long subjectId, List<OrderChapterRequest> orderChapterRequestList) {
+        Map<String, Object> serviceResponse = new HashMap<>();
+        try{
+            logger.debug("Reorder chapter index");
+            Optional<SubjectDomain> subjectOptional = subjectRepo.findById(subjectId);
+            if(subjectOptional.isEmpty()){
+                serviceResponse = ResponseUtils.formatAPIResponse("1", "Please insert subject info first", "");
+                return serviceResponse;
+            }
+
+            logger.debug("Start loop through chapter order");
+            for (OrderChapterRequest newChapterOrder : orderChapterRequestList) {
+                Optional<ChapterDomain> chapterOptional = chapterRepo.findSubjectChapterDomainById(newChapterOrder.getId());
+
+                if(chapterOptional.isPresent()){
+                    ChapterDomain chapterDomain = chapterOptional.get();
+                    chapterDomain.setChapterIndex(newChapterOrder.getIndex());
+                    logger.debug("Update chapter id {} to order {}", newChapterOrder.getId(), newChapterOrder.getIndex());
+                    chapterRepo.save(chapterDomain);
+                }
+            }
+
+            List<ChapterDomain> chapterDomainList = chapterRepo.findSubjectChapterDomainsBySubjectIdOrderByChapterIndexAsc(subjectId);
+            serviceResponse =  ResponseUtils.formatAPIResponse("0", "Successfully Order the chapter", chapterDomainList);
+
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Toggle Subject Status", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+    }
+
+    public Map<String, Object> getSubjectSummaryDashboard() {
+        logger.debug("Start subject summary dashboard services");
+        Map<String, Object> serviceResponse = new HashMap<>();
+        SubjectSummaryResponse summaryResponse = new SubjectSummaryResponse();
+
+        try{
+
+            long activeSubject = subjectRepo.countByStatusEqualsIgnoreCase("ACTIVE");
+            long totalSubject = subjectRepo.count();
+            long totalChapter = chapterRepo.count();
+            long totalQuestions = questionBankRepo.count();
+
+            summaryResponse.setActiveSubject(activeSubject);
+            summaryResponse.setTotalSubject(totalSubject);
+            summaryResponse.setTotalChapter(totalChapter);
+            summaryResponse.setTotalQuestion(totalQuestions);
+
+            serviceResponse = ResponseUtils.formatAPIResponse("0", "Success", summaryResponse);
+
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Toggle Subject Status", e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response {}", serviceResponse);
+        return serviceResponse;
+
+
+
     }
 }

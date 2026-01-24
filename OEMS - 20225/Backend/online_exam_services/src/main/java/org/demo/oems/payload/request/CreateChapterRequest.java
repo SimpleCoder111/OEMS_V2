@@ -13,6 +13,8 @@ public class CreateChapterRequest {
 
         private String description;
 
-        private boolean isActive;
+        private Boolean isActive;
+
+        private int index;
 
 }

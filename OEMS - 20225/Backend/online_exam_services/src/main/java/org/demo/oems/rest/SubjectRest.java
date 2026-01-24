@@ -1,5 +1,10 @@
 package org.demo.oems.rest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.coyote.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.SubjectDomain;
@@ -16,10 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/subjects")
@@ -33,53 +35,53 @@ public class SubjectRest {
         this.subjectService = subjectService;
     }
 
-    @GetMapping("/getAllSubject")
-    public ResponseEntity<?> getAllSubject(){
-        try{
-            logger.info("Start Get All Subject Rest");
-            List<SubjectDomain> subjectList = subjectService.getSubjectList();
-            return new ResponseEntity<>(subjectList, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
-
-    @PostMapping("/addSubjectInfo")
-    public ResponseEntity<?> addNewSubject(@RequestBody CreateSubjectInfoRequest request){
-        try{
-            logger.info("Start Add Subject Rest");
-            JSONObject response = subjectService.addNewSubject(request);
-            return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
-
-    @PostMapping("createSubjectChapters")
-    public ResponseEntity<?> addChaptersToSubject(@RequestBody List<CreateSubjectChapter> request){
-        try{
-            logger.info("Start Add Subject Rest");
-            JSONObject response = subjectService.addChaptersToSubject(request);
-            return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
-
-    @GetMapping("getChaptersBySubjectId/{subjectId}")
-    public ResponseEntity<?> addChaptersToSubject(@PathVariable long subjectId){
-        try{
-            logger.info("Get All Chapters By Subject ID Rest :: {}", subjectId);
-            JSONObject response = subjectService.getChaptersBySubject(subjectId);
-            return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
+//    @GetMapping("/getAllSubject")
+//    public ResponseEntity<?> getAllSubject(){
+//        try{
+//            logger.info("Start Get All Subject Rest");
+//            List<SubjectDomain> subjectList = subjectService.getSubjectList();
+//            return new ResponseEntity<>(subjectList, HttpStatusCode.valueOf(200));
+//        }catch (Exception e){
+//            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+//            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+//        }
+//    }
+//
+//    @PostMapping("/addSubjectInfo")
+//    public ResponseEntity<?> addNewSubject(@RequestBody CreateSubjectInfoRequest request){
+//        try{
+//            logger.info("Start Add Subject Rest");
+//            JSONObject response = subjectService.addNewSubject(request);
+//            return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
+//        }catch (Exception e){
+//            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+//            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+//        }
+//    }
+//
+//    @PostMapping("createSubjectChapters")
+//    public ResponseEntity<?> addChaptersToSubject(@RequestBody List<CreateSubjectChapter> request){
+//        try{
+//            logger.info("Start Add Subject Rest");
+//            JSONObject response = subjectService.addChaptersToSubject(request);
+//            return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
+//        }catch (Exception e){
+//            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+//            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+//        }
+//    }
+//
+//    @GetMapping("getChaptersBySubjectId/{subjectId}")
+//    public ResponseEntity<?> addChaptersToSubject(@PathVariable long subjectId){
+//        try{
+//            logger.info("Get All Chapters By Subject ID Rest :: {}", subjectId);
+//            JSONObject response = subjectService.getChaptersBySubject(subjectId);
+//            return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
+//        }catch (Exception e){
+//            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
+//            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+//        }
+//    }
 
     /*
     Purpose: 1. Load all subjects with their chapters on page load
@@ -87,6 +89,11 @@ public class SubjectRest {
      */
     @GetMapping("")
     //    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin Subject Service - Get All Subjects Info", description = "Get All Subject Information")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     public ResponseEntity<Map<String, Object>> getAllSubjects(){
         try{
             List<SubjectResponse> subjectResponseList = subjectService.getAllSubjects();
@@ -103,76 +110,222 @@ public class SubjectRest {
     Purpose: 2. Add a new subject
      */
     @PostMapping("")
-    public String createNewSubject(@RequestBody CreateSubjectRequest createSubjectRequest){
-
-        return "OK";
+    @Operation(summary = "Admin Subject Service - Create Subject Info", description = "Create New Subject Info")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    //Admin Service
+    public ResponseEntity<Map<String, Object>> createNewSubject(@RequestBody CreateSubjectRequest createSubjectRequest){
+        try{
+            Map<String, Object> createSubjectResponse = subjectService.createNewSubject(createSubjectRequest);
+            logger.debug("Final API Response :: {}", createSubjectResponse);
+            return new ResponseEntity<>(createSubjectResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"Create New Subject", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
     Purpose: 3. Edit subject details
     */
     @PutMapping("/{subjectId}")
-    public String updateSubjectInfo(@PathVariable long subjectId, @RequestBody CreateSubjectRequest createSubjectRequest){
-
-        return "OK";
+    @Operation(summary = "Admin Subject Service - Update Subject Info", description = "Update Subject Info by Subject ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public  ResponseEntity<Map<String, Object>> updateSubjectInfo(@PathVariable long subjectId, @RequestBody CreateSubjectRequest createSubjectRequest){
+        try{
+            Map<String, Object> createSubjectResponse = subjectService.editSubjectInfo(subjectId, createSubjectRequest);
+            logger.debug("Final API Response :: {}", createSubjectResponse);
+            return new ResponseEntity<>(createSubjectResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"Update New Subject", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
    Purpose: 4. Activate or deactivate a subject
    */
     @PutMapping("/{subjectId}/status")
-    public String updateSubjectStatus(@PathVariable long subjectId, @RequestBody UpdateSubjectStatusRequest updateSubjectStatus){
-        return "OK";
+    @Operation(summary = "Admin Subject Service - Toggle Subject Status", description = "Update Subject Status to ACTIVE OR INACTIVE by Subject ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    //TODO: ADMIN OPERATION
+    public ResponseEntity<Map<String, Object>> updateSubjectStatus(@PathVariable long subjectId, @RequestParam Boolean isActive){
+        try{
+            Map<String, Object> updateSubjectStatusResponse = subjectService.updateSubjectStatus(subjectId, isActive);
+            logger.debug("Final API Response :: {}", updateSubjectStatusResponse);
+            return new ResponseEntity<>(updateSubjectStatusResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"Toggle Subject Status", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+
     }
+
 
     /*
     Purpose: 5. Activate or deactivate a subject
     */
     @DeleteMapping("/{subjectId}")
-    public String deleteSubjectInfo(@PathVariable long subjectId){
-        return "OK";
+    //TODO: ADMIN SERVICE
+    @Operation(summary = "Admin Subject Service - Delete Subject Info", description = "Delete Subject, Chapters, Questions Related to Subject ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Map<String, Object>> deleteSubjectInfo(@PathVariable long subjectId){
+        try{
+            Map<String, Object> deleteSubjectResponse = subjectService.deleteSubjectAndChapterRelated(subjectId);
+            logger.debug("Final API Response :: {}", deleteSubjectResponse);
+            return new ResponseEntity<>(deleteSubjectResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"Delete Subject Info", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+
     }
 
     /*
     Purpose: 6. Add a new chapter to a subject
     */
+    //TODO: ADMIN SERVICE
     @PostMapping("/{subjectId}/chapters")
-    public CreateChapterResponse createChapterInfo(@PathVariable long subjectId, @RequestBody CreateChapterRequest createChapterRequest){
-        CreateChapterResponse chapterResponse = new CreateChapterResponse();
-        return chapterResponse;
+    @Operation(summary = "Admin Subject Service - Create Chapter Info", description = "Insert Multiple Lists of Chapter to Subject with Subject ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Map<String, Object>> createChapterInfo(@PathVariable long subjectId, @RequestBody List<CreateChapterRequest> createChapterListRequest){
+        try{
+            Map<String, Object> addChaptersListsResponse = subjectService.insertNewChaptersForSubject(subjectId, createChapterListRequest);
+            logger.debug("Final API Response :: {}", addChaptersListsResponse);
+            return new ResponseEntity<>(addChaptersListsResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"Delete Subject Info", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
     Purpose: 7. Update Chapter
     */
-    @PostMapping("/chapters/{chapterId}")
-    public String updateChapterInfo(@PathVariable long chapterId, @RequestBody CreateChapterRequest createChapterRequest){
-        return "OK";
+    //TODO: ADMIN SERVICE
+    @PutMapping("/chapters/{chapterId}")
+    @Operation(summary = "Admin Subject Service - Update Chapter Info", description = "Update Chapter Info By Chapter ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+//    @Tag(name = "Subject Management", description = "Admin Service Update Chapter Info")
+    public ResponseEntity<Map<String, Object>> updateChapterInfo(@PathVariable long chapterId, @RequestBody CreateChapterRequest createChapterRequest){
+        try{
+            Map<String, Object> addChaptersListsResponse = subjectService.editChapterInfo(chapterId, createChapterRequest);
+            logger.debug("Final API Response :: {}", addChaptersListsResponse);
+            return new ResponseEntity<>(addChaptersListsResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"Edit Chapter Info", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
     Purpose: 8. Toggle Chapter Status
     */
-    @PostMapping("/chapters/{chapterId}/status")
-    public String updateChapterInfo(@PathVariable long chapterId, @RequestBody ToggleChapterStatusRequest toggleChapterStatusRequest){
-        return "OK";
+    //TODO: ADMIN SERVICE
+    @PutMapping("/chapters/{chapterId}/status")
+    @Operation(summary = "Admin Subject Service - Toggle Chapter Status", description = "Update Chapter Status to ACTIVE or INACTIVE")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Map<String, Object>> updateChapterStatus(@PathVariable long chapterId, @RequestParam Boolean isActive){
+        try{
+            Map<String, Object> updateChapterStatus = subjectService.updateChapterStatus(chapterId, isActive);
+            logger.debug("Final API Response :: {}", updateChapterStatus);
+            return new ResponseEntity<>(updateChapterStatus, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"updateChapterStatus", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
     Purpose: Delete a chapter from a subject
     */
+    //TODO: ADMIN SERVICE
     @DeleteMapping("/chapters/{chapterId}")
-    public String deleteChapterInfo(@PathVariable long chapterId){
-        return "OK";
+    @Operation(summary = "Admin Subject Service - Delete Chapter Info", description = "Delete chapter and questions related to chapter")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Map<String, Object>> deleteChapterInfo(@PathVariable long chapterId){
+        try{
+            Map<String, Object> deleteChapterResponse = subjectService.deleteChapterAndQuestionRelated(chapterId);
+            logger.debug("Final API Response :: {}", deleteChapterResponse);
+            return new ResponseEntity<>(deleteChapterResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"deleteChapterInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
     Purpose: Update chapter order indices
     */
-    @PostMapping("/{subjectId}/chapters/reorder")
-    public CreateChapterResponse updateChapterOrderIndices(@PathVariable long subjectId, @RequestBody List<OrderChapterRequest> orderChapterRequestList){
-        CreateChapterResponse chapterResponse = new CreateChapterResponse();
-        return chapterResponse;
+    //TODO: ADMIN SERVICE
+    @Operation(summary = "Admin Subject Service - Reorder Chapter", description = "Return a new order of chapter by subject id")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PutMapping("/{subjectId}/chapters/reorder")
+    public ResponseEntity<Map<String, Object>> updateChapterOrderIndices(@PathVariable long subjectId, @RequestBody List<OrderChapterRequest> orderChapterRequestList){
+        try{
+            Map<String, Object> orderChapterIndexResponse = subjectService.orderChapterIndex(subjectId, orderChapterRequestList);
+            logger.debug("Final API Response :: {}", orderChapterIndexResponse);
+            return new ResponseEntity<>(orderChapterIndexResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"updateChapterOrderIndices", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+    /*
+    Purpose: Get Subject Summary Dashboard
+    */
+    //TODO: ADMIN SERVICE
+    @GetMapping("/dashboard")
+    @Operation(summary = "Admin - Subject Service - Get subject summary", description = "Return count of activate subject, total subject, total chapter, total questions")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Map<String, Object>> getSubjectSummaryDashboard(){
+        try{
+            Map<String, Object> subjectSummaryDashboardResponse = subjectService.getSubjectSummaryDashboard();
+            logger.debug("Final API Response :: {}", subjectSummaryDashboardResponse);
+            return new ResponseEntity<>(subjectSummaryDashboardResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"getSubjectSummaryDashboard", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
 //    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")

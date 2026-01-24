@@ -27,4 +27,7 @@ public class ChapterDomain {
 
     @Column(name = "active")
     private String chapterStatus = "active";
+
+    @Column(name = "chapter_description")
+    private String chapterDescription;
 }

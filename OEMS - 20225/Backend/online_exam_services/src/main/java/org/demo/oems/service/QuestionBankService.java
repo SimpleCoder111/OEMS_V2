@@ -53,10 +53,9 @@ public class QuestionBankService {
         List<QuestionBankListsResponse> questionListsResponse = new ArrayList<>();
 
         try {
-            List<QuestionBankDomain> questionBankDomainList = questionBankRepo.getQuestionBankDomainsBySubjectId(subjectId);
 
+            logger.debug("Step 1: Find subject Info subject ID ::  {}", subjectId);
             Optional<SubjectDomain> subjectDomainOptional = subjectRepo.getSubjectDomainsById(subjectId);
-
 
             SubjectDomain subjectInfo = new SubjectDomain();
 
@@ -64,7 +63,10 @@ public class QuestionBankService {
                 subjectInfo = subjectDomainOptional.get();
             }
 
+            logger.debug("Step 2: Find All Questions related to subject ID ::  {}", subjectId);
+            List<QuestionBankDomain> questionBankDomainList = questionBankRepo.getQuestionBankDomainsBySubjectId(subjectId);
 
+            logger.debug("Step 3: Loop Through Questions Lists");
             for (QuestionBankDomain questionBankDomain : questionBankDomainList) {
                 QuestionBankListsResponse questionResponse = new QuestionBankListsResponse();
 
@@ -130,7 +132,6 @@ public class QuestionBankService {
             newQuestionBank.setQuestionContent(requestPayload.getQuestionContent());
             newQuestionBank.setDifficulty(QuestionBankDomain.Difficulty.valueOf(requestPayload.getDifficulty()));
             newQuestionBank.setCreatedBy(requestPayload.getCreatedBy());
-//            newQuestionBank.setSubjectId(requestPayload.getSubjectId());
 
             questionBankRepo.save(newQuestionBank);
 
@@ -139,8 +140,6 @@ public class QuestionBankService {
 
             addQuestionBankResponse.put("responseStatus", responseStatus);
             addQuestionBankResponse.put("responseMessage", responseMessage);
-
-
 
         }catch (Exception e){
             logger.error("Exception while add question banks :: {}" , e.getMessage() );
