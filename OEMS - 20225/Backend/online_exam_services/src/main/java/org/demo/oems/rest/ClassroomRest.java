@@ -1,15 +1,15 @@
 package org.demo.oems.rest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.oems.domain.ClassDomain;
 import org.demo.oems.payload.response.*;
 import org.demo.oems.payload.request.CreateNewClassRequest;
-import org.demo.oems.payload.request.CreateClassInfoRequest;
 import org.demo.oems.service.ClassroomService;
 import org.demo.oems.utils.CommonConstantUtils;
 import org.demo.oems.utils.ResponseUtils;
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,61 +30,118 @@ public class ClassroomRest {
         this.classroomService = classroomService;
     }
 
-    @PostMapping("/createClassInfo")
-    public ResponseEntity<?> createClassInfo(@RequestBody CreateClassInfoRequest request){
+
+    @Operation(summary = "Admin Classes Service - Create Classes Info", description = "Create Classes Info")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("")
+    public ResponseEntity<Map<String, Object>> createNewClass(@RequestBody CreateNewClassRequest createNewClassRequest){
         try{
-            logger.info("Start Create Class Info Request");
-            JSONObject finalResponse = classroomService.createClassInfo(request);
+            Map<String, Object> finalResponse = classroomService.createNewClasses(createNewClassRequest);
             return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
-            logger.error("Exception Happen While Create Class Info {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "createNewClass", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-    @GetMapping("/getAllClassesInfo")
-    public ResponseEntity<?> getAllClassesInfo(){
-        try{
-            logger.info("Start Create Class Info Request");
-            List<ClassDomain> classDomainList = classroomService.getAllClassesInfo();
-            return new ResponseEntity<>(classDomainList, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception Happen While Get All Classes Info {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
-
-    /*
-        Purpose: Load all classes on page load
-        Query params: Optional filters (status, year, search)
-     */
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin Classes Service - Get All Classes Info", description = "Get All Classes Info")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     @GetMapping("")
-    public List<ClassListsResponse> getAllClasses(){
-        List<ClassListsResponse> classListsResponses = new ArrayList<>();
-        return classListsResponses;
+    public ResponseEntity<Map<String, Object>> getAllClassesInfo(){
+        try{
+            logger.debug("Get All Classes Info");
+            Map<String, Object> getAllClassesInfoResponse = classroomService.getAllClassesInfo();
+            logger.debug("Final API Response :: {}", getAllClassesInfoResponse);
+            return new ResponseEntity<>(getAllClassesInfoResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
-    /*
-    Purpose: Populate teacher dropdown in create/edit dialogs
-     */
+    @Operation(summary = "Admin Classes Service - Edit Classes Info", description = "Edit Classes Info")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PutMapping("/{classId}")
+    public ResponseEntity<Map<String, Object>> editClassInfo(@PathVariable long classId, @RequestBody CreateNewClassRequest createNewClassRequest){
+        try{
+            logger.debug("Edit Classes Info");
+            Map<String, Object> editClassInfoResponse = classroomService.editClassInfo(classId, createNewClassRequest);
+            logger.debug("Final API Response :: {}", editClassInfoResponse);
+            return new ResponseEntity<>(editClassInfoResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"editClassInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Admin Classes Service - Get Classes Dashboard", description = "")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/summary")
+    public ResponseEntity<Map<String, Object>> getClassesDashboard(){
+        try{
+            logger.debug("Get Classes Dashboard");
+            Map<String, Object> getClassesDashboardResponse = classroomService.getClassesDashboard();
+            logger.debug("Final API Response :: {}", getClassesDashboardResponse);
+            return new ResponseEntity<>(getClassesDashboardResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Admin Classes Service - Get Teacher Lists for Classes", description = "Response a filters lists of teacher to assign to class")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/teachers")
-    public List<TeacherListResponse> getAllTeacherLists(){
-        List<TeacherListResponse> teacherListResponses = new ArrayList<>();
-
-        return teacherListResponses;
+    public ResponseEntity<Map<String, Object>> getAllTeacherLists(){
+        try{
+            logger.debug("Get Teacher Lists");
+            Map<String, Object> teacherListsResponse = classroomService.getTeacherLists();
+            logger.debug("Final API Response :: {}", teacherListsResponse);
+            return new ResponseEntity<>(teacherListsResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
-    /*
-    Purpose: Populate student list in enrollment dialog
-     */
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin Classes Service - Get Student Lists for Classes", description = "Response a filters lists of student to assign to class")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     @GetMapping("/students")
-    public List<StudentListResponse> getAllStudentLists(){
-        List<StudentListResponse> studentListResponses = new ArrayList<>();
-
-        return studentListResponses;
+    public ResponseEntity<Map<String, Object>> getAllStudentLists(){
+        try{
+            logger.debug("Get Student Lists");
+            Map<String, Object> studentListsResponse = classroomService.getStudentLists();
+            logger.debug("Final API Response :: {}", studentListsResponse);
+            return new ResponseEntity<>(studentListsResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     /*
@@ -94,43 +151,7 @@ public class ClassroomRest {
     @GetMapping("/{classId}/enrollments")
     public List<EnrollmentsResponse> getAllStudentEnrolledInClass(@PathVariable long classId){
         List<EnrollmentsResponse> enrollmentLists = new ArrayList<>();
-
         return enrollmentLists;
-    }
-
-    /*
-    Purpose: Create a new class
-     */
-//    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/")
-    public ResponseEntity<Map<String, Object>> createNewClass(@RequestBody CreateNewClassRequest createNewClassRequest){
-        try{
-            ClassDomain newClassDomain = classroomService.createNewClasses(createNewClassRequest);
-            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("0", "success", newClassDomain);
-            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
-            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
-        }
-    }
-
-    /*
-    Purpose: Edit class details
-    */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{classId}")
-    public String updateClassInfo(@PathVariable long classId, @RequestBody CreateNewClassRequest createNewClassRequest){
-        return "OK";
-    }
-
-    /*
-    Purpose: Delete class details
-    */
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{classId}")
-    public String deleteClass(@PathVariable long classId){
-        return "OK";
     }
 
     /*
@@ -149,14 +170,5 @@ public class ClassroomRest {
             return ResponseEntity.internalServerError().body(enrollmentsResponses);
         }
     }
-
-
-
-
-
-
-
-
-
 
 }

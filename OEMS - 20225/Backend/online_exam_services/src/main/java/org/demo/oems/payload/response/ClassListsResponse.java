@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ClassListsResponse {
+
     private long classId;
 
     private String className;
@@ -21,5 +22,9 @@ public class ClassListsResponse {
     private String classYear;
 
     private String teacherId;
+
+    private String teacherName;
+
+    private long studentCount;
 
 }

@@ -7,10 +7,14 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class StudentListResponse {
-    private String id;
+public class ClassSummaryResponse {
 
-    private String name;
+    private long totalClasses;
 
-    private String email;
+    private long onGoing;
+
+    private long completed;
+
+    private long totalEnrollment;
+
 }

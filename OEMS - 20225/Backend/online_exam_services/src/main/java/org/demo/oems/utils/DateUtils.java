@@ -76,7 +76,6 @@ public class DateUtils {
         }catch (Exception e){
             logger.error("Exception while get Class Status :: {}", e.getMessage());
             return "";
-
         }
     }
 

@@ -20,11 +20,6 @@ public class ClassroomDomain {
     @Column(name = "student_id")
     private String studentId;
 
-    // Student enrolled in a group (9A), not per subject
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false)
-    private ClassGroupDomain classGroup;
-
     @Column(name = "status", length = 20)
     private String status = "active";  // active, inactive, graduated, etc.
 

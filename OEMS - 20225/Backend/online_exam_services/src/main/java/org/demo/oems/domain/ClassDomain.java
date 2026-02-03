@@ -30,9 +30,11 @@ public class ClassDomain {
     @Column(name = "class_end")
     private LocalDateTime classEnd;
 
-    // Belongs to one group (e.g., 9A)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false)
-    private ClassGroupDomain classGroup;
+    @Column(name = "class_status")
+    private String classStatus;
+
+    @Column(name = "academic_year")
+    private String academicYear;
+
 
 }

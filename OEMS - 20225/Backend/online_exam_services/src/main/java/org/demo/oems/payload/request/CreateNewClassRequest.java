@@ -17,10 +17,10 @@ public class CreateNewClassRequest {
 
     private Long subjectId;
 
-    private Long classGroupId;
-
     private String classStatus;
 
     private String teacherId;
+
+    private String academicYear;
 
 }

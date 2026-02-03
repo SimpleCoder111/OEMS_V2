@@ -4,9 +4,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,6 +11,10 @@ import java.time.LocalDateTime;
 public class CreateClassInfoRequest {
 
     private String className;
+
+    private String subjectName;
+
+    private long subjectId;
 
     private String teacherId;
 
@@ -23,6 +24,6 @@ public class CreateClassInfoRequest {
 
     private String classStatus;
 
-    private String classYear;
+    private String academicYear;
 
 }

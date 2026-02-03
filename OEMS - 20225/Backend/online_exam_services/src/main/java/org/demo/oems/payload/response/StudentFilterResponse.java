@@ -2,11 +2,15 @@ package org.demo.oems.payload.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
-public class TeacherListResponse {
+@NoArgsConstructor
+public class StudentFilterResponse {
     private String id;
 
     private String name;
+
+    private String email;
 }
