@@ -108,12 +108,13 @@ public class SubjectRest {
         }
     }
 
-    @DeleteMapping("/{subjectId}")
+
     @Operation(summary = "Admin Subject Service - Delete Subject Info", description = "Delete Subject, Chapters, Questions Related to Subject ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
+    @DeleteMapping("/{subjectId}")
     public ResponseEntity<Map<String, Object>> deleteSubjectInfo(@PathVariable long subjectId){
         try{
             Map<String, Object> deleteSubjectResponse = subjectService.deleteSubjectAndChapterRelated(subjectId);

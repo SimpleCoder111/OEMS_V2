@@ -1,5 +1,7 @@
 package org.demo.oems.service;
 
+import jakarta.persistence.*;
+import org.apache.coyote.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.*;
@@ -18,6 +20,7 @@ import org.demo.oems.repository.SubjectChapterRepo;
 import org.demo.oems.repository.SubjectRepo;
 import org.demo.oems.utils.CommonConstantUtils;
 import org.demo.oems.utils.ResponseUtils;
+import org.hibernate.type.descriptor.java.ObjectJavaType;
 import org.json.simple.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class QuestionBankService {
@@ -46,10 +47,11 @@ public class QuestionBankService {
         this.chapterRepo = chapterRepo;
     }
 
-    public JSONObject getAllQuestionBanksBySubject(long subjectId){
+    public Map<String, Object> getAllQuestionBanksBySubject(long subjectId){
         logger.debug("Get All Question Banks By Subject Services Start");
 
-        JSONObject finalResponse = new JSONObject();
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        Map<String, Object> finalResponse = new JSONObject();
         List<QuestionBankListsResponse> questionListsResponse = new ArrayList<>();
 
         try {
@@ -90,18 +92,20 @@ public class QuestionBankService {
 
                 questionListsResponse.add(questionResponse);
 
-
             }
-            finalResponse = ResponseUtils.formatServiceResponse("0", "Success");
             finalResponse.put("questionData", questionListsResponse);
             finalResponse.put("subjectId", subjectId);
             finalResponse.put("subjectName", subjectInfo.getSubjectName());
-        }catch (Exception e){
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Success", finalResponse);
+
+        }catch (Exception e) {
             logger.error("Exception Get All Question Banks By Subject Services :: {}", e.getMessage());
-            finalResponse = ResponseUtils.formatServiceResponse("1", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
         }
 
-        return finalResponse;
+        logger.debug("Final Service Response :: {}", finalServiceResponse);
+        return finalServiceResponse;
     }
 
     public static List<OptionListResponse> getOptionListResponses(List<OptionBankDomain> optionBankLists) {
@@ -122,37 +126,94 @@ public class QuestionBankService {
     }
 
 
-    public JSONObject addQuestionBanks(QuestionBankInsertRequest requestPayload){
-        JSONObject addQuestionBankResponse = new JSONObject();
-        String responseStatus;
-        String responseMessage;
+    @Transactional
+    public Map<String, Object> addQuestionBanks(long subjectId, QuestionBankInsertRequest requestPayload){
+        Map<String, Object> finalServiceResponse = new JSONObject();
         try{
+            Optional<SubjectDomain> subjectDomainOptional = subjectRepo.findById(subjectId);
+
+            if(subjectDomainOptional.isEmpty()){
+                logger.error("Subject is not found for ID :: {}", subjectId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("1", "Subject is not found", "");
+                return finalServiceResponse;
+            }
+
+            //Step 2: Save Data to Question Domain
             QuestionBankDomain newQuestionBank = new QuestionBankDomain();
+            newQuestionBank.setSubject(subjectDomainOptional.get());
             newQuestionBank.setQuestionType(QuestionBankDomain.QuestionType.valueOf(requestPayload.getQuestionType()));
             newQuestionBank.setQuestionContent(requestPayload.getQuestionContent());
             newQuestionBank.setDifficulty(QuestionBankDomain.Difficulty.valueOf(requestPayload.getDifficulty()));
             newQuestionBank.setCreatedBy(requestPayload.getCreatedBy());
+            newQuestionBank.setCreatedAt(LocalDateTime.now());
 
+            Optional<ChapterDomain> chapterDomainOptional = chapterRepo.findById(requestPayload.getChapterId());
+
+            if(chapterDomainOptional.isEmpty()){
+                logger.error("Chapter is not found for ID :: {}", requestPayload.getChapterId());
+                finalServiceResponse = ResponseUtils.formatAPIResponse("1", "Chapter is not found", "");
+                return finalServiceResponse;
+            }
+
+            newQuestionBank.setChapter(chapterDomainOptional.get());
             questionBankRepo.save(newQuestionBank);
 
-            responseStatus = "success";
-            responseMessage = "Successfully Insert";
+            //Insert Option
+            for(int i = 0; i < requestPayload.getOptionLists().size(); i++){
+                OptionBankInsertRequest requestOptionBank = requestPayload.getOptionLists().get(i);
 
-            addQuestionBankResponse.put("responseStatus", responseStatus);
-            addQuestionBankResponse.put("responseMessage", responseMessage);
+                OptionBankDomain newOptionBank = new OptionBankDomain();
+                newOptionBank.setQuestionId(newQuestionBank.getId());
+                newOptionBank.setOptionText(requestOptionBank.getOptionText());
+                newOptionBank.setIsCorrect(requestOptionBank.getIsCorrect());
 
+                optionBankRepo.save(newOptionBank);
+            }
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Create New Question", newQuestionBank);
+            logger.debug("Successfully create the Question :: {}", finalServiceResponse);
+            return  finalServiceResponse;
         }catch (Exception e){
-            logger.error("Exception while add question banks :: {}" , e.getMessage() );
-            responseStatus = "fail";
-            responseMessage = e.getMessage();
-
-            addQuestionBankResponse.put("responseStatus", responseStatus);
-            addQuestionBankResponse.put("responseMessage", responseMessage);
-
+            logger.error("Exception while create question banks :: {}" , e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return  finalServiceResponse;
         }
-
-        return  addQuestionBankResponse;
     }
+
+    @Transactional
+    public Map<String, Object> deleteQuestionById(Long questionId){
+        Map<String, Object> finalServiceResponse;
+        try{
+            //Step 1: Delete All Option Related to Question
+            logger.debug("Start Delete Questions By ID");
+            List<OptionBankDomain> optionBankDomainList = optionBankRepo.getOptionBankDomainsByQuestionId(questionId);
+
+            logger.debug("Step 1: Going to delete options related to the questions :: {}", optionBankDomainList.size());
+
+            if(!optionBankDomainList.isEmpty()){
+                optionBankRepo.deleteByQuestionId(questionId);
+            }
+
+            logger.debug("Step 2: Going to delete question ID :: {}", questionId);
+            Optional<QuestionBankDomain> questionBankDomainOptional = questionBankRepo.findById(questionId);
+
+            if(questionBankDomainOptional.isEmpty()){
+                logger.debug("Could not find any records to deleted");
+                finalServiceResponse = ResponseUtils.formatAPIResponse("0", "No Records to Delete", "");
+                return finalServiceResponse;
+            }
+
+            questionBankRepo.deleteById(questionId);
+            finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Deleted", "");
+            logger.debug("Successfully Delete Question :: {}", finalServiceResponse);
+            return  finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception while delete question banks :: {}" , e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return  finalServiceResponse;
+        }
+    }
+
 
     public JSONObject addQuestionBanksArray(List<QuestionBankInsertRequest> requestPayload){
         JSONObject addQuestionBankResponse = new JSONObject();
@@ -193,7 +254,6 @@ public class QuestionBankService {
     }
 
     public void insertQuestionAndOptionBank(List<QuestionBankInsertRequest> questionLists, int questionBankIndex) {
-
         try {
             QuestionBankInsertRequest questionBank = questionLists.get(questionBankIndex);
 
@@ -232,20 +292,37 @@ public class QuestionBankService {
         }
     }
 
-    public void deleteQuestionAndOptionBank(Long questionId){
+
+    @Transactional
+    public Map<String, Object> deleteQuestionAndOptionBank(Long questionId){
+        Map<String, Object> finalServiceResponse = new HashMap<>();
         try{
+            logger.debug("Start - deleteQuestionAndOptionBank with questionId :: {}", questionId);
+            logger.debug("Step 1: Validate Question ID if exists");
             Optional<QuestionBankDomain> questionBankOptional = questionBankRepo.findById(questionId);
 
             if(questionBankOptional.isPresent()){
+                logger.debug("Step 1: Question domain exists");
                 QuestionBankDomain questionBank = questionBankOptional.get();
 
+                logger.debug("Step 2: Delete all options related to the questions :: {}", questionId);
                 long optionCount = optionBankRepo.countByQuestionId(questionBank.getId());
-                logger.debug("Going to delete {} options related to question ID :: {}", optionCount, questionId);
+                logger.debug("Step 2: Going to delete {} options related to question ID :: {}", optionCount, questionId);
                 optionBankRepo.deleteByQuestionId(questionBank.getId());
 
             }
+
+            logger.debug("Step 3: Delete Question ID :: {}", questionId);
+            questionBankRepo.deleteById(questionId);
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Deleted the Question", "");
+            logger.debug("Final service response :: {}",  finalServiceResponse);
+            return finalServiceResponse;
         }catch (Exception e){
             logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE, "Delete Question and Option Bank", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+
+            return finalServiceResponse;
         }
     }
 
@@ -407,5 +484,79 @@ public class QuestionBankService {
             case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
             default -> "";
         };
+    }
+
+    @Transactional
+    public Map<String, Object> editQuestionByQuestionId(long questionId, QuestionBankInsertRequest requestPayload) {
+        Map<String, Object> finalServiceResponse;
+        try{
+            logger.debug("Start - editQuestionByQuestionId question ID :: {} with requestPayload :: {}", questionId, requestPayload);
+
+            //Step 1: Validate Subject ID
+            long subjectId = requestPayload.getSubjectId();
+            Optional<SubjectDomain> subjectDomainOptional = subjectRepo.findById(subjectId);
+
+            if(subjectDomainOptional.isEmpty()){
+                logger.error("Subject is not found for ID :: {}", subjectId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("1", "Subject is not found", "");
+                return finalServiceResponse;
+            }
+
+
+            Optional<ChapterDomain> chapterDomainOptional = chapterRepo.findById(requestPayload.getChapterId());
+
+            if(chapterDomainOptional.isEmpty()){
+                logger.error("Chapter is not found for ID :: {}", requestPayload.getChapterId());
+                finalServiceResponse = ResponseUtils.formatAPIResponse("1", "Chapter is not found", "");
+                return finalServiceResponse;
+            }
+
+            //Step 1: Validate Question ID
+            Optional<QuestionBankDomain> questionBankOptional = questionBankRepo.findById(questionId);
+            if(questionBankOptional.isEmpty()){
+                logger.error("Question is not found for ID :: {}", questionId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("1", "Question is not found", "");
+                return finalServiceResponse;
+            }
+
+            QuestionBankDomain existQuestionBank = questionBankOptional.get();
+
+            existQuestionBank.setSubject(subjectDomainOptional.get());
+            existQuestionBank.setQuestionType(QuestionBankDomain.QuestionType.valueOf(requestPayload.getQuestionType()));
+            existQuestionBank.setQuestionContent(requestPayload.getQuestionContent());
+            existQuestionBank.setDifficulty(QuestionBankDomain.Difficulty.valueOf(requestPayload.getDifficulty()));
+            existQuestionBank.setCreatedBy(requestPayload.getCreatedBy());
+            existQuestionBank.setCreatedAt(LocalDateTime.now());
+            existQuestionBank.setChapter(chapterDomainOptional.get());
+
+            questionBankRepo.save(existQuestionBank);
+
+            //Insert Option
+            for(int i = 0; i < requestPayload.getOptionLists().size(); i++){
+                OptionBankInsertRequest requestOptionBank = requestPayload.getOptionLists().get(i);
+                Optional<OptionBankDomain> optionBankDomainOptional = optionBankRepo.findById(requestOptionBank.getOptionId());
+
+                if(optionBankDomainOptional.isEmpty()){
+                    logger.error("Question is not found for ID :: {}", questionId);
+                    finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Success Update Question", "");
+                    return finalServiceResponse;
+                }
+
+                OptionBankDomain existOption = optionBankDomainOptional.get();
+                existOption.setQuestionId(existQuestionBank.getId());
+                existOption.setOptionText(requestOptionBank.getOptionText());
+                existOption.setIsCorrect(requestOptionBank.getIsCorrect());
+
+                optionBankRepo.save(existOption);
+            }
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Update Question", "");
+            logger.debug("Successfully edit the Question :: {}", finalServiceResponse);
+            return  finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception while edit question banks :: {}" , e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return  finalServiceResponse;
+        }
     }
 }

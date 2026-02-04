@@ -162,13 +162,33 @@ public class ClassroomRest {
     public ResponseEntity<List<EnrollmentsResponse>> updateClassEnrollments(@RequestBody long classId){
         List<EnrollmentsResponse> enrollmentsResponses = new ArrayList<>();
         try {
-
-
             return ResponseEntity.ok(enrollmentsResponses);
         }catch (Exception e){
             logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Update Class Enrollment", e.getMessage());
             return ResponseEntity.internalServerError().body(enrollmentsResponses);
         }
     }
+
+    @Operation(summary = "Teacher Classes Service - Get All Classes Info", description = "Get All Classes Info")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/{teacherId}")
+    public ResponseEntity<Map<String, Object>> getAllClassesInfoForTeacher(@PathVariable String teacherId){
+        try{
+            logger.debug("Get All Classes Info");
+            Map<String, Object> getAllClassesInfoResponse = classroomService.getAllClassesInfoByTeacherId(teacherId);
+            logger.debug("Final API Response :: {}", getAllClassesInfoResponse);
+            return new ResponseEntity<>(getAllClassesInfoResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,"getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+
+
 
 }

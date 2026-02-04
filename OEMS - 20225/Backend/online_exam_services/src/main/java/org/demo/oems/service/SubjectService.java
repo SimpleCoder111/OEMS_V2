@@ -245,6 +245,18 @@ public class SubjectService {
                     subjectResponse.setCreatedAt(createdAt);
 
                     logger.debug("Subject Response :: {}", subjectResponse);
+
+                    List<ChapterResponse> chapterResponseList = new ArrayList<>();
+                    List<ChapterDomain> chapterDomainLists = chapterRepo.findSubjectChapterDomainsBySubjectIdOrderByChapterIndexAsc(subjectDomain.getId());
+
+                    logger.debug("Found total chapter for the subject {} :: {}", subjectDomain.getSubjectName(), chapterDomainLists.size());
+                    for(ChapterDomain chapterDomain : chapterDomainLists){
+                        ChapterResponse chapterResponse = getChapterResponse(chapterDomain);
+                        chapterResponseList.add(chapterResponse);
+                    }
+
+                    subjectResponse.setChapterResponseList(chapterResponseList);
+
                     subjectResponseList.add(subjectResponse);
                 }
 
@@ -257,6 +269,7 @@ public class SubjectService {
         logger.debug("Final Subject Response :: " + subjectResponseList);
         return subjectResponseList;
     }
+
 
     public Map<String, Object> createNewSubject(CreateSubjectRequest createSubjectRequest) {
         Map<String, Object> serviceResponse = new HashMap<>();

@@ -6,6 +6,8 @@ import lombok.*;
 @Data
 public class OptionBankInsertRequest {
 
+    private Long optionId;
+
     private String optionText;
 
     private Boolean isCorrect;

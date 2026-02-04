@@ -1,22 +1,21 @@
 package org.demo.oems.rest;
 
-import lombok.Data;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.payload.request.QuestionBankInsertRequest;
 import org.demo.oems.payload.response.QuestionImportResponse;
-import org.demo.oems.repository.QuestionBankRepo;
 import org.demo.oems.service.QuestionBankService;
 import org.demo.oems.utils.CommonConstantUtils;
 import org.demo.oems.utils.ResponseUtils;
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,84 +24,74 @@ public class QuestionRest {
     private final Logger logger = LogManager.getLogger(QuestionRest.class);
 
     private final QuestionBankService questionBankService;
-    private final QuestionBankRepo questionBankRepo;
 
-    public QuestionRest(QuestionBankService questionBankService,
-                        QuestionBankRepo questionBankRepo) {
+    public QuestionRest(QuestionBankService questionBankService) {
         this.questionBankService = questionBankService;
-        this.questionBankRepo = questionBankRepo;
     }
 
+    @Operation(summary = "Teacher Question Service", description = "Get All Questions with Subject ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     @GetMapping("/{subjectId}")
-    public ResponseEntity<?> getQuestionBankBySubjectId(@PathVariable Long subjectId){
+    public ResponseEntity<Map<String, Object>> getQuestionBankBySubjectId(@PathVariable Long subjectId){
         try{
             logger.info("Start Retrieve all question bank by subject Id :: {}", subjectId );
-            JSONObject apiResponse = questionBankService.getAllQuestionBanksBySubject(subjectId);
+            Map<String, Object> apiResponse = questionBankService.getAllQuestionBanksBySubject(subjectId);
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Get Question Bank By Subject ID", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-    @PostMapping("/addQuestionBank")
-    public ResponseEntity<?> addQuestionBank(@RequestBody QuestionBankInsertRequest questionBankInsertRequest){
+    @PostMapping("/{subjectId}")
+    @Operation(summary = "Teacher Question Service", description = "Create New Question for subjects")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Map<String, Object>> createQuestionsForSubject(@PathVariable long subjectId, @RequestBody QuestionBankInsertRequest questionBankInsertRequest){
         try{
             logger.info("Add Question Bank :: {}", questionBankInsertRequest);
-            JSONObject apiResponse = questionBankService.addQuestionBanks(questionBankInsertRequest);
+            Map<String, Object> apiResponse = questionBankService.addQuestionBanks(subjectId, questionBankInsertRequest);
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-    @PostMapping("/addQuestionBanksAsArray")
-    public ResponseEntity<?> addQuestionBanks(@RequestBody List<QuestionBankInsertRequest> apiRequest){
-        try{
-            logger.info("Add Question Bank as Array :: {}", apiRequest);
-            JSONObject apiResponse = questionBankService.addQuestionBanksArray(apiRequest);
-            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
-
-
-    /*Create Single Question for subject*/
-    @PostMapping("/")
-    public ResponseEntity<?> createQuestionsForSubject(@RequestBody QuestionBankInsertRequest questionBankInsertRequest){
+    @Operation(summary = "Teacher Question Service", description = "Update Question with Question ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PutMapping("/{questionId}")
+    public ResponseEntity<Map<String, Object>> updateQuestionsForSubject(@PathVariable long questionId, @RequestBody QuestionBankInsertRequest questionBankInsertRequest){
         try{
             logger.info("Add Question Bank :: {}", questionBankInsertRequest);
-            JSONObject apiResponse = questionBankService.addQuestionBanks(questionBankInsertRequest);
+            Map<String, Object> apiResponse = questionBankService.editQuestionByQuestionId(questionId, questionBankInsertRequest);
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-    /*Update Single Question for subject*/
-    @PutMapping("/")
-    public ResponseEntity<?> updateQuestionsForSubject(@RequestBody QuestionBankInsertRequest questionBankInsertRequest){
-        try{
-            logger.info("Add Question Bank :: {}", questionBankInsertRequest);
-            JSONObject apiResponse = questionBankService.addQuestionBanks(questionBankInsertRequest);
-            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception happen while retrieving question banks :: {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
-
-    /*Delete Question*/
+    @Operation(summary = "Teacher Question Service", description = "Delete Both Question and Option with Question ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     @DeleteMapping("/{questionId}")
     public ResponseEntity<Map<String, Object>> deleteQuestion(@PathVariable Long questionId){
         try{
             logger.debug("Start Delete Question ID :: {}", questionId);
-            questionBankService.deleteQuestionAndOptionBank(questionId);
-            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("0", "successfully deleted !!!", "");
+            Map<String, Object> apiResponse = questionBankService.deleteQuestionAndOptionBank(questionId);
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e) {
             logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Delete Question By ID", e.getMessage());
@@ -111,6 +100,11 @@ public class QuestionRest {
         }
     }
 
+    @Operation(summary = "Teacher Question Service", description = "Import Question bulk with excel")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> importQuestionInBulk(@RequestParam("file") MultipartFile file, @RequestParam("subjectId") Long subjectId){
         try {
@@ -124,6 +118,5 @@ public class QuestionRest {
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }
-
 
 }

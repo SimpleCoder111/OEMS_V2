@@ -20,4 +20,5 @@ public interface SubjectRepo extends JpaRepository<SubjectDomain, Long> {
 
 
 
+
 }

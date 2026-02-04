@@ -31,6 +31,7 @@ public class ClassroomService {
     private final ClassroomRepo classroomRepo;
 
     private final UserInfoRepo userInfoRepo;
+
     private final SubjectRepo subjectRepo;
 
 
@@ -69,46 +70,63 @@ public class ClassroomService {
         List<ClassListsResponse> data = new ArrayList<>();
         try{
             List<ClassDomain> classDomainList = classRepo.findAll();
-
-            logger.debug("Loop through entire class lists :: {}", classDomainList.size());
-            for(ClassDomain classDomain: classDomainList){
-                ClassListsResponse classInfo = new ClassListsResponse();
-                classInfo.setClassId(classDomain.getClassId());
-
-//                classInfo.setClassYear(classDomain.getClassGroup().getAcademicYear());
-                classInfo.setClassName(classDomain.getClassName());
-                classInfo.setTeacherId(classDomain.getTeacherId());
-
-                Optional<UserInfoDomain> optionalUser = userInfoRepo.findUserInfoDomainByUserId(classDomain.getTeacherId());
-                optionalUser.ifPresent(userInfoDomain -> classInfo.setTeacherName(userInfoDomain.getName()));
-
-
-                long studentCount = classroomRepo.countByClassId(classDomain.getClassId());
-
-                classInfo.setStudentCount(studentCount);
-
-                String classStatus = DateUtils.getClassStatus(classDomain.getClassStart(), classDomain.getClassEnd());
-
-                String classStart = DateUtils.convertDateToString(classDomain.getClassStart());
-                String classEnd = DateUtils.convertDateToString(classDomain.getClassEnd());
-
-                classInfo.setClassStatus(classStatus);
-                classInfo.setClassStart(classStart);
-                classInfo.setClassEnd(classEnd);
-
-                data.add(classInfo);
-            }
-
-            serviceResponse = ResponseUtils.formatAPIResponse("0", "success", data);
+            serviceResponse = getStringObjectMap(data, classDomainList);
 
         }catch (Exception e){
             logger.error("Exception While Getting Classes Info Lists :: {}" , e.getMessage());
-
             serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
         }
         logger.debug("Final Service Response :: {}", serviceResponse);
         return serviceResponse;
     }
+
+    public Map<String, Object> getAllClassesInfoByTeacherId(String teacherId){
+        logger.debug("Get All Classes Info By Teacher ID :: {}", teacherId);
+        Map<String, Object> serviceResponse = new HashMap<>();
+        List<ClassListsResponse> data = new ArrayList<>();
+        try{
+            List<ClassDomain> classDomainList = classRepo.getClassDomainsByTeacherIdEqualsIgnoreCase(teacherId);
+            serviceResponse = getStringObjectMap(data, classDomainList);
+        }catch (Exception e){
+            logger.error("Exception While Getting Classes Info Lists :: {}" , e.getMessage());
+            serviceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+        }
+        logger.debug("Final Service Response :: {}", serviceResponse);
+        return serviceResponse;
+    }
+
+    private Map<String, Object> getStringObjectMap(List<ClassListsResponse> data, List<ClassDomain> classDomainList) {
+        Map<String, Object> serviceResponse;
+        logger.debug("Loop through entire class lists :: {}", classDomainList.size());
+        for(ClassDomain classDomain: classDomainList){
+            ClassListsResponse classInfo = new ClassListsResponse();
+            classInfo.setClassId(classDomain.getClassId());
+
+            classInfo.setClassName(classDomain.getClassName());
+            classInfo.setTeacherId(classDomain.getTeacherId());
+
+            Optional<UserInfoDomain> optionalUser = userInfoRepo.findUserInfoDomainByUserId(classDomain.getTeacherId());
+            optionalUser.ifPresent(userInfoDomain -> classInfo.setTeacherName(userInfoDomain.getName()));
+
+
+            long studentCount = classroomRepo.countByClassId(classDomain.getClassId());
+            classInfo.setStudentCount(studentCount);
+            String classStatus = DateUtils.getClassStatus(classDomain.getClassStart(), classDomain.getClassEnd());
+
+            String classStart = DateUtils.convertDateToString(classDomain.getClassStart());
+            String classEnd = DateUtils.convertDateToString(classDomain.getClassEnd());
+
+            classInfo.setClassStatus(classStatus);
+            classInfo.setClassStart(classStart);
+            classInfo.setClassEnd(classEnd);
+
+            data.add(classInfo);
+        }
+
+        serviceResponse = ResponseUtils.formatAPIResponse("0", "success", data);
+        return serviceResponse;
+    }
+
 
     @Transactional
     public Map<String, Object> createNewClasses(CreateNewClassRequest createNewClassRequest) {
