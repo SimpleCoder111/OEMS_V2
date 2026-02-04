@@ -348,11 +348,11 @@ public class SubjectService {
             }else{
                 SubjectDomain subjectDomain = subjectOptional.get();
 
-                int questionCount = questionBankRepo.countBySubject_Id(subjectId);
+                long questionCount = questionBankRepo.countBySubject_Id(subjectId);
                 logger.debug("Going to delete {} questions related to the subject", questionCount);
                 questionBankRepo.deleteBySubject_Id(subjectId);
 
-                int chapterCount = chapterRepo.countBySubject_id(subjectId);
+                long chapterCount = chapterRepo.countBySubject_id(subjectId);
                 logger.debug("Going to delete {} chapters related to the subject", chapterCount);
                 chapterRepo.deleteBySubject_Id(subjectDomain.getId());
 
@@ -515,7 +515,7 @@ public class SubjectService {
                 ChapterDomain chapterDomain = chapterOptional.get();
                 logger.debug("Going to delete chapter info and question related :: {}", chapterDomain.getId());
 
-                int questionCount = questionBankRepo.countByChapter_Id(chapterId);
+                long questionCount = questionBankRepo.countByChapter_Id(chapterId);
                 logger.debug("Going to delete {} questions related to the chapters", questionCount);
                 questionBankRepo.deleteByChapter_Id(chapterId);
 

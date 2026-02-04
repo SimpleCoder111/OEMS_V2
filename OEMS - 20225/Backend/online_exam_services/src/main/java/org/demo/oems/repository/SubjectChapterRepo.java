@@ -15,7 +15,7 @@ public interface SubjectChapterRepo  extends JpaRepository<ChapterDomain, Long>{
 
     void deleteBySubject_Id(Long subjectId);
 
-    int countBySubject_id(Long subjectId);
+    long countBySubject_id(Long subjectId);
 
 
 

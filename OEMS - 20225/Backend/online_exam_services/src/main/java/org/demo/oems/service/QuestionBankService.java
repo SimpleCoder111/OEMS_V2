@@ -5,19 +5,14 @@ import org.apache.coyote.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.ss.usermodel.*;
-import org.demo.oems.domain.OptionBankDomain;
-import org.demo.oems.domain.QuestionBankDomain;
-import org.demo.oems.domain.ChapterDomain;
-import org.demo.oems.domain.SubjectDomain;
+import org.demo.oems.domain.*;
 import org.demo.oems.payload.request.OptionBankInsertRequest;
 import org.demo.oems.payload.request.QuestionBankInsertRequest;
 import org.demo.oems.payload.response.OptionListResponse;
 import org.demo.oems.payload.response.QuestionBankListsResponse;
 import org.demo.oems.payload.response.QuestionImportResponse;
-import org.demo.oems.repository.OptionBankRepo;
-import org.demo.oems.repository.QuestionBankRepo;
-import org.demo.oems.repository.SubjectChapterRepo;
-import org.demo.oems.repository.SubjectRepo;
+import org.demo.oems.payload.response.QuestionSummaryResponse;
+import org.demo.oems.repository.*;
 import org.demo.oems.utils.CommonConstantUtils;
 import org.demo.oems.utils.ResponseUtils;
 import org.hibernate.type.descriptor.java.ObjectJavaType;
@@ -38,13 +33,16 @@ public class QuestionBankService {
 
     private final SubjectRepo subjectRepo;
     private final SubjectChapterRepo chapterRepo;
+    private final ClassRepo classRepo;
 
     public QuestionBankService(QuestionBankRepo questionBankRepo,
-                               OptionBankRepo optionBankRepo, SubjectRepo subjectRepo, SubjectChapterRepo chapterRepo) {
+                               OptionBankRepo optionBankRepo, SubjectRepo subjectRepo, SubjectChapterRepo chapterRepo,
+                               ClassRepo classRepo) {
         this.questionBankRepo = questionBankRepo;
         this.optionBankRepo = optionBankRepo;
         this.subjectRepo = subjectRepo;
         this.chapterRepo = chapterRepo;
+        this.classRepo = classRepo;
     }
 
     public Map<String, Object> getAllQuestionBanksBySubject(long subjectId){
@@ -326,7 +324,6 @@ public class QuestionBankService {
         }
     }
 
-
     @Transactional
     public QuestionImportResponse importQuestions(MultipartFile file, Long subjectId, String createdUserId) {
         List<String> errors = new ArrayList<>();
@@ -553,6 +550,80 @@ public class QuestionBankService {
             finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Update Question", "");
             logger.debug("Successfully edit the Question :: {}", finalServiceResponse);
             return  finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception while edit question banks :: {}" , e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return  finalServiceResponse;
+        }
+    }
+
+    public Map<String, Object> getQuestionSummaryDashboard(String teacherId) {
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        try{
+            logger.debug("Start - getQuestionSummaryDashboard");
+
+            logger.debug("Step 1 :: Find All Classes the teacher is teaching :: {}", teacherId);
+            List<ClassDomain> classDomainList = classRepo.getClassDomainsByTeacherIdEqualsIgnoreCase(teacherId);
+
+            logger.debug("Found {} Classes for Teacher ID {}", classDomainList.size(), teacherId);
+
+            long totalQuestions = 0;
+            long totalEasyQuestions = 0;
+            long totalMediumQuestions = 0;
+            long totalHardQuestions = 0;
+            long totalMCQQuestions = 0;
+            long totalFillBlankQuestions = 0;
+            long totalTrueFalseQuestions = 0;
+
+            for(ClassDomain classDomain : classDomainList){
+                long subjectId = classDomain.getSubjectId();
+
+                logger.debug("Step 2: Count All Question with Subject ID :: {}", subjectId);
+
+                totalQuestions += questionBankRepo.countBySubject_Id(subjectId);
+                logger.debug("Total Questions :: {}", totalQuestions);
+
+                totalEasyQuestions += questionBankRepo.countBySubject_IdAndDifficulty(subjectId, QuestionBankDomain.Difficulty.EASY);
+                logger.debug("Total Easy Questions :: {}", totalEasyQuestions);
+
+                totalMediumQuestions += questionBankRepo.countBySubject_IdAndDifficulty(subjectId, QuestionBankDomain.Difficulty.MEDIUM);
+                logger.debug("Total Medium Questions :: {}", totalMediumQuestions);
+
+                totalHardQuestions += questionBankRepo.countBySubject_IdAndDifficulty(subjectId, QuestionBankDomain.Difficulty.HARD);
+                logger.debug("Total Hard Questions :: {}", totalHardQuestions);
+
+                totalMCQQuestions += questionBankRepo.countBySubject_IdAndQuestionType(subjectId, QuestionBankDomain.QuestionType.MULTIPLE_CHOICE);
+                logger.debug("Total MCQ Questions :: {}", totalMCQQuestions);
+
+                totalFillBlankQuestions += questionBankRepo.countBySubject_IdAndQuestionType(subjectId, QuestionBankDomain.QuestionType.FILL_BLANK);
+                logger.debug("Total Fill in the Blank Questions :: {}", totalFillBlankQuestions);
+
+                totalTrueFalseQuestions += questionBankRepo.countBySubject_IdAndQuestionType(subjectId, QuestionBankDomain.QuestionType.TRUE_FALSE);
+                logger.debug("Total True False Questions :: {}", totalTrueFalseQuestions);
+            }
+
+            logger.debug("Final Total Questions :: {}", totalQuestions);
+            logger.debug("Final Total Easy Questions :: {}", totalEasyQuestions);
+            logger.debug("Final Total Medium Questions :: {}", totalMediumQuestions);
+            logger.debug("Final Total Hard Questions :: {}", totalHardQuestions);
+            logger.debug("Final Total MCQ Questions :: {}", totalMCQQuestions);
+            logger.debug("Final Total Fill in the Blank Questions :: {}", totalFillBlankQuestions);
+            logger.debug("Final Total True False Questions :: {}", totalTrueFalseQuestions);
+
+            QuestionSummaryResponse questionSummaryResponse = new QuestionSummaryResponse();
+            questionSummaryResponse.setTotalEasyQuestions(totalEasyQuestions);
+            questionSummaryResponse.setTotalQuestions(totalQuestions);
+            questionSummaryResponse.setTotalHardQuestions(totalHardQuestions);
+            questionSummaryResponse.setTotalMediumQuestions(totalMediumQuestions);
+            questionSummaryResponse.setTotalMCQQuestions(totalMCQQuestions);
+            questionSummaryResponse.setTotalFillBlankQuestions(totalFillBlankQuestions);
+            questionSummaryResponse.setTotalTrueFalseQuestions(totalTrueFalseQuestions);
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("0", "success", questionSummaryResponse);
+
+            logger.debug("Final Service Response :: {}", finalServiceResponse);
+            return finalServiceResponse;
+
         }catch (Exception e){
             logger.error("Exception while edit question banks :: {}" , e.getMessage());
             finalServiceResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");

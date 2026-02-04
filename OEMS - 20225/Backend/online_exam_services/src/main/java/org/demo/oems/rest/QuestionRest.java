@@ -119,4 +119,22 @@ public class QuestionRest {
         }
     }
 
+    @Operation(summary = "Teacher Question Service", description = "Question Summary Dashboard for Teacher")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/summary/{teacherId}")
+    public ResponseEntity<Map<String, Object>> getQuestionSummaryDashboard(@PathVariable String teacherId){
+        try {
+            logger.debug("Start - getQuestionSummaryDashboard Controller  {}", teacherId);
+            Map<String, Object> apiResponse = questionBankService.getQuestionSummaryDashboard(teacherId);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Delete Question By ID", e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
 }
