@@ -29,6 +29,17 @@ public class DateUtils {
         }
     }
 
+    public static LocalDateTime formatTimestamp(String timestampString) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+            return LocalDateTime.parse(timestampString, formatter);
+        }catch (Exception e){
+            logger.error("Exception while parsing date format :: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public static String convertDateToString(LocalDateTime date) {
         try {
             if (date == null) {
@@ -77,6 +88,20 @@ public class DateUtils {
             logger.error("Exception while get Class Status :: {}", e.getMessage());
             return "";
         }
+    }
+
+    public static int compareDateWithCurrent(LocalDateTime setDate){
+        LocalDateTime currentDateTime = LocalDateTime.now();
+
+        if(currentDateTime.isAfter(setDate)) {
+            logger.debug("Current time is after the setting date");
+            return -1;
+        }
+        else if(currentDateTime.isBefore(setDate)) {
+            logger.debug("Current time is before the setting date");
+            return 1;
+        }
+        else return 0;
     }
 
 

@@ -25,8 +25,8 @@ public class ExamDomain {
     private String examTitle;
 
     @Column(name = "duration")
-    private String duration;
+    private int duration;
 
-    @Column(name = "exam_status")
-    private String examStatus;
+    @Column(name = "exam_paper_id")
+    private Long examPaperId;
 }

@@ -31,12 +31,8 @@ public class DashboardRest {
     private final DashboardService dashboardService;
 
 
-    /*
-    Purpose: 1. Get overview statistics for the dashboard
-    */
 
     @GetMapping("/stats")
-//    @PreAuthorize("hasRole('ADMIN')")
     public DashboardStatisticResponse getDashboardStatistics(){
         DashboardStatisticResponse dashboardStatisticResponse = new DashboardStatisticResponse();
         try {
