@@ -36,5 +36,8 @@ public class ClassDomain {
     @Column(name = "academic_year")
     private String academicYear;
 
+    @Column(name = "classToken")
+    private String classToken;
+
 
 }

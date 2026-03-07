@@ -21,15 +21,13 @@ public class OptionBankDomain {
     @Column(name = "question_id")
     private Long questionId;
 
-    @Column(name = "option_label") //ex: Option A, B, C, D
-    private String optionLabel;
+    @Column(name = "correct_answer", columnDefinition = "TEXT")
+    private String correctAnswer;
 
     @Column(name = "option_text")
     private String optionText;
 
     @Column(name = "is_correct")
     private Boolean isCorrect = false;
-
-
 
 }

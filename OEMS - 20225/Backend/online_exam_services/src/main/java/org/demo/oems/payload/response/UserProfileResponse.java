@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserProfileResponse {
-    private String userId;
+    private String id;
 
     private String name;
 
@@ -25,7 +25,8 @@ public class UserProfileResponse {
 
     private String gender;
 
-    private String roleName;
+    private String role;
 
     private String profileImageUrl;  // ← new
+
 }

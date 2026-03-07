@@ -24,7 +24,14 @@ public class CommonConstantUtils {
 
     public static final String VALUE_PUBLISHED = "PUBLISHED";
 
+    public static final String VALUE_APPROVED = "APPROVED";
 
+    public static final String VALUE_REJECTED = "REJECTED";
 
+    public static final String VALUE_PENDING = "PENDING";
+
+    public static final String VALUE_EXAM_IN_PROGRESS = "IN_PROGRESS";
+
+    public static final String VALUE_EXAM_SUBMITTED = "SUBMITTED";
 
 }

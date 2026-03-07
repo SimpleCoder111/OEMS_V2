@@ -1,12 +1,7 @@
 package org.demo.oems.domain;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.LocalDateTime;
-import java.util.Map;
-
 
 @Entity
 @Table(name = "exam_session")
@@ -27,14 +22,25 @@ public class ExamSessionDomain {
     @Column(length = 20)
     private String status = "IN_PROGRESS";
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "progress_data")
-    private Map<String, Object> progressData; // Auto-save logic
+    @Column(name = "progress_data", columnDefinition = "TEXT")
+    private String progressData; // Auto-save logic
 
     @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
     @Column(name = "last_save")
     private LocalDateTime lastSave = LocalDateTime.now();
+
+    @Column(name = "start_time")
+    private LocalDateTime startTime;
+
+    @Column(name = "submit_time")
+    private LocalDateTime submitTime;
+
+    @Column(name ="score", nullable = false, precision = 5, scale = 2, columnDefinition = "numeric(5,2) default 0.00")
+    private int score = 0;
+
+    @Column(name = "time_taken", nullable = false)
+    private long timeTaken = 0; // Seconds, for tie-breaking rankings [2]
 }
 

@@ -432,8 +432,9 @@ public class QuestionBankService {
                         // Create single "answer" option – centralized like MCQ/TF
                         OptionBankDomain answerOption = new OptionBankDomain();
                         answerOption.setQuestionId(question.getId());
-                        answerOption.setOptionLabel("ANSWER");  // Fixed label (or null if you prefer)
-                        answerOption.setOptionText(correctAnswer.trim());
+//                        answerOption.setOptionLabel("ANSWER");  // Fixed label (or null if you prefer)
+                        answerOption.setCorrectAnswer(correctAnswer.trim());
+
                         answerOption.setIsCorrect(true);
 
                         // No longer store in question.correctAnswer
@@ -461,7 +462,7 @@ public class QuestionBankService {
 
         OptionBankDomain option = new OptionBankDomain();
         option.setQuestionId(question.getId());
-        option.setOptionLabel(label);
+//        option.setOptionLabel(label);
         option.setOptionText(text);
         option.setIsCorrect(false);
         return optionBankRepo.save(option);  // Or collect for batch}
@@ -630,4 +631,11 @@ public class QuestionBankService {
             return  finalServiceResponse;
         }
     }
+
+    public QuestionBankDomain findQuestionBankById(long questionId){
+        Optional<QuestionBankDomain> questionBankDomainOptional = questionBankRepo.findById(questionId);
+        return questionBankDomainOptional.orElse(null);
+    }
+
+
 }

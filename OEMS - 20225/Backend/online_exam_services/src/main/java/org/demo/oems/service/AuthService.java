@@ -58,7 +58,7 @@ public class AuthService {
         } catch (BadCredentialsException e) {
            logger.error("Bad Credential Exception :: {}", e.getMessage());
            authResponse.setStatus("400");
-           authResponse.setMessages("Either User or Password Not Correct!!!");
+           authResponse.setMessages("Invalid User Credentials !!!");
            return authResponse;
         }catch (Exception e){
             logger.error(LOG_PREFIX_EXCEPTION_IN_SERVICE, "Login Authentication Service", e.getMessage());

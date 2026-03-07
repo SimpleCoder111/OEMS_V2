@@ -2,15 +2,11 @@ package org.demo.oems.utils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.oems.service.QuestionBankService;
 import org.springframework.stereotype.Service;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 
 @Service
 public class DateUtils {
@@ -90,19 +86,42 @@ public class DateUtils {
         }
     }
 
-    public static int compareDateWithCurrent(LocalDateTime setDate){
-        LocalDateTime currentDateTime = LocalDateTime.now();
+    public static String getExamStatus(LocalDateTime examStart, int duration) {
+        try {
+            LocalDateTime examFinish = LocalDateTime.now().plusMinutes(duration);
 
-        if(currentDateTime.isAfter(setDate)) {
-            logger.debug("Current time is after the setting date");
-            return -1;
+            LocalDateTime now = LocalDateTime.now();
+
+            if (now.isBefore(examStart)) {
+                return "UP_COMING";
+            }
+
+            if (now.isAfter(examFinish) || now.isEqual(examFinish)) {
+                return "COMPLETED";
+            }
+
+            return "ONGOING";
+
+        }catch (Exception e){
+            logger.error("Exception while get exam Status :: {}", e.getMessage());
+            return "";
         }
-        else if(currentDateTime.isBefore(setDate)) {
-            logger.debug("Current time is before the setting date");
-            return 1;
-        }
-        else return 0;
     }
 
+    public static int compareDateWithCurrent(LocalDateTime setDate){
+        try {
+            LocalDateTime currentDateTime = LocalDateTime.now();
 
+            if (currentDateTime.isAfter(setDate)) {
+                logger.debug("Current time is bigger the setting date");
+                return -1;
+            } else if (currentDateTime.isBefore(setDate)) {
+                logger.debug("Current time is smaller the setting date");
+                return 1;
+            } else return 0;
+        }catch (Exception e){
+            logger.error("Exception while comparing current date with the setting date :: {}", e.getMessage());
+            return -2;
+        }
+    }
 }

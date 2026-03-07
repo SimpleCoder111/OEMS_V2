@@ -99,6 +99,24 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.4.0</version>  <!-- Latest stable -->
         </dependency>
+
+        <!--QR -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version> <!-- check latest -->
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <!-- Optional: for better QR look -->
+        <dependency>
+            <groupId>io.nayuki</groupId>
+            <artifactId>qrcodegen</artifactId>
+            <version>1.8.0</version>
+        </dependency>
     </dependencies>
 
     <build>

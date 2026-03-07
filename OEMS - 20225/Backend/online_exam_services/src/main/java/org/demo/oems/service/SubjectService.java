@@ -590,8 +590,12 @@ public class SubjectService {
         }
         logger.debug("Final Service Response {}", serviceResponse);
         return serviceResponse;
-
-
-
     }
+
+
+    public SubjectDomain getSubjectInfoById(long subjectId){
+        Optional<SubjectDomain> subjectDomainOptional = subjectRepo.findById(subjectId);
+        return subjectDomainOptional.orElse(null);
+    }
+
 }

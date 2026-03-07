@@ -1,4 +1,3 @@
-// Updated QuestionBankDomain - Proper JPA relationships + enums
 package org.demo.oems.domain;
 
 import jakarta.persistence.*;
@@ -11,7 +10,6 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class QuestionBankDomain {
 
     @Id
@@ -44,6 +42,9 @@ public class QuestionBankDomain {
 
     @Column(name = "created_by")
     private String createdBy;
+
+    @Column(name = "points")
+    private int points;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

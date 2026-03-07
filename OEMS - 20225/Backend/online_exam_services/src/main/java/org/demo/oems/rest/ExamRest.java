@@ -7,6 +7,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.payload.request.CreateExamRequest;
 import org.demo.oems.payload.request.ExamPaperGenerationRequest;
+import org.demo.oems.payload.request.TakeExamRequest;
+import org.demo.oems.payload.response.ExamPaperResponse;
+import org.demo.oems.payload.response.ExamPaperSubmitOrSaveRequest;
 import org.demo.oems.service.ExamService;
 import org.demo.oems.utils.CommonConstantUtils;
 import org.demo.oems.utils.ResponseUtils;
@@ -15,6 +18,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +44,65 @@ public class ExamRest {
             return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
         }
     }
+
+    @Operation(summary = "Student Exam Service", description = "Get Exam Paper")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("/student/take-exam")
+    public ResponseEntity<Map<String, Object>> getExamPaperForStudent(@RequestBody TakeExamRequest takeExamRequest){
+        Map<String, Object> apiResponse = new HashMap<>();
+        try{
+            logger.info("STart - getExamPaperForStudent :: {}", takeExamRequest);
+            apiResponse = examService.getExamPaperForStudent(takeExamRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception happen while Get Randomized Exam Questions :: {}", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Student - Exam Service ", description = "Submit Exam Paper")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("/student/submit")
+    public ResponseEntity<Map<String, Object>> submitExamPaper(@RequestBody ExamPaperResponse examPaperSubmitRequest){
+        Map<String, Object> apiResponse = new HashMap<>();
+        try{
+            logger.info("Start - submitExamPaper :: {}", examPaperSubmitRequest);
+            apiResponse = examService.submitExam(examPaperSubmitRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception - submitExamPaper :: {}", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Student - Exam Service Save Progress", description = "Save Exam Paper Progress")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("/student/save-progress")
+    public ResponseEntity<Map<String, Object>> saveExamPaperProgress(@RequestBody ExamPaperResponse examPaperSaveProgressRequest){
+        Map<String, Object> apiResponse = new HashMap<>();
+        try{
+            logger.info("Start - submitExamPaper :: {}", examPaperSaveProgressRequest);
+            apiResponse = examService.saveExamPaperProgress(examPaperSaveProgressRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception - submitExamPaper :: {}", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+
 
     @Operation(summary = "Teacher Exam Service", description = "Create New Exam")
     @ApiResponses(value = {
@@ -131,6 +194,26 @@ public class ExamRest {
         try {
             logger.info("Start Retrieve Exam Lists By Teacher ID :: {}", teacherId);
             Map<String, Object> apiResponse = examService.getAllExamsByTeacherId(teacherId);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        } catch (Exception e) {
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,
+                    "Get Exam By ID", e.getMessage());
+            Map<String, Object> apiResponse =
+                    ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Student Exam Service", description = "Get Exam by Student ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/student/{studentId}")
+    public ResponseEntity<Map<String, Object>> getAllExamsByStudentId(@PathVariable String studentId) {
+        try {
+            logger.info("Start Retrieve Exam Lists By Student ID :: {}", studentId);
+            Map<String, Object> apiResponse = examService.getAllExamsByStudentId(studentId);
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         } catch (Exception e) {
             logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER,

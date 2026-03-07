@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ClassRepo extends JpaRepository<ClassDomain, Long> {
 
@@ -16,6 +17,8 @@ public interface ClassRepo extends JpaRepository<ClassDomain, Long> {
     );
 
     long countByClassEndLessThan(LocalDateTime now);
+
+    Optional<ClassDomain> getClassDomainByClassToken(String classToken);
 
 
 }

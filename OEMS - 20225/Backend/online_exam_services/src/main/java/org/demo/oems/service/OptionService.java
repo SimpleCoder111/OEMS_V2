@@ -3,6 +3,7 @@ package org.demo.oems.service;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.OptionBankDomain;
+import org.demo.oems.domain.QuestionBankDomain;
 import org.demo.oems.repository.OptionBankRepo;
 import org.springframework.stereotype.Service;
 
@@ -51,5 +52,17 @@ public class OptionService {
         }
     }
 
+    public List<OptionBankDomain> findOptionListsByQuestionId(long questionId){
+        return optionBankRepo.getOptionBankDomainsByQuestionId(questionId);
+    }
 
+    public OptionBankDomain findOptionInfoById(long optionId){
+        Optional<OptionBankDomain> optionBankDomainOptional = optionBankRepo.findById(optionId);
+        return optionBankDomainOptional.orElse(null);
+    }
+
+
+    public OptionBankDomain findByQuestionIdAndIsCorrectTrue(Long questionId) {
+        return optionBankRepo.getOptionBankDomainsByQuestionIdAndAndIsCorrect(questionId, true);
+    }
 }

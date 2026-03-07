@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ExamRepo extends JpaRepository<ExamDomain, Long> {
     // ExamRepository (assuming GeneratedExam or Exam entity)
@@ -12,4 +13,9 @@ public interface ExamRepo extends JpaRepository<ExamDomain, Long> {
 
     List<ExamDomain> getExamDomainsByClassIdAndSubjectId(long classId, long subjectId);
 
+    List<ExamDomain> getExamDomainsByClassId(long classId);
+
+    List<ExamDomain> getExamDomainsByClassIdAndExamDateIsAfter(long classId, LocalDateTime localDateTime);
+
+    Optional<ExamDomain> findFirstByClassIdAndExamDateAfterOrderByExamDateAsc(long classId, LocalDateTime localDateTime);
 }
