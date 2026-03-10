@@ -6,10 +6,10 @@ import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.RoleDomain;
 import org.demo.oems.domain.UserInfoDomain;
 import org.demo.oems.payload.request.CreateUserRequest;
+import org.demo.oems.payload.request.ToggleUserStatusRequest;
 import org.demo.oems.payload.response.UserProfileResponse;
 import org.demo.oems.repository.UserInfoRepo;
 import org.demo.oems.utils.ResponseUtils;
-import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -50,8 +50,8 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
-    public JSONObject createUser(CreateUserRequest request){
-        JSONObject apiResponse = new JSONObject();
+    public Map<String, Object> createUser(CreateUserRequest request){
+        Map<String, Object> apiResponse = new HashMap<>();
 
         try{
             logger.debug("Creat User Service :: {}", request);
@@ -63,7 +63,7 @@ public class UserService implements UserDetailsService {
 
             if(isUserExist){
                 logger.debug("User Already Exists :: {}", randomUniqueUserId);
-                apiResponse = ResponseUtils.formatServiceResponse("1", "User Already Exists");
+                apiResponse = ResponseUtils.formatAPIResponse("400", "User Already Exists", "");
                 return apiResponse;
             }
 
@@ -74,12 +74,12 @@ public class UserService implements UserDetailsService {
             UserInfoDomain newUser = getUserInfoDomain(request);
             userInfoRepo.save(newUser);
 
-            apiResponse = ResponseUtils.formatServiceResponse("0", "Successfully Create User");
+            apiResponse = ResponseUtils.formatAPIResponse("200", "Successfully Create User", newUser);
             logger.debug(LOG_PREFIX_FINAL_SERVICES_RESPONSE, apiResponse);
             return apiResponse;
         }catch (Exception e){
-            logger.error("Exception while trying to added new subject :: {}", e.getMessage());
-            apiResponse = ResponseUtils.formatServiceResponse("1", e.getMessage());
+            logger.error("Exception while trying to create new user :: {}", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
             return apiResponse;
         }
     }
@@ -87,19 +87,7 @@ public class UserService implements UserDetailsService {
     private static UserInfoDomain getUserInfoDomain(CreateUserRequest request) {
         UserInfoDomain newUser = new UserInfoDomain();
 
-        newUser.setUserId(request.getUserId());
-        newUser.setName(request.getName());
-        newUser.setPassword(request.getPassword());
-        newUser.setDateOfBirth(request.getDob());
-        newUser.setGender(request.getGender());
-
-        RoleDomain roleDomain = new RoleDomain();
-        roleDomain.setId(request.getRoleId());
-
-        newUser.setRole(roleDomain);
-        newUser.setEmail(request.getEmail());
-        newUser.setPhoneNumber(request.getPhoneNumber());
-        newUser.setAddress(request.getAddress());
+        createOrUpdateUserInfo(request, newUser);
         return newUser;
     }
 
@@ -117,16 +105,20 @@ public class UserService implements UserDetailsService {
         return userInfoDomainList;
     }
 
-    public List<UserInfoDomain> getAllUserInfoLists(){
+    public Map<String, Object> getAllUserInfoLists(){
+        Map<String, Object> finalServiceResponse = new HashMap<>();
         List<UserInfoDomain> userInfoDomainList = new ArrayList<>();
         try{
             logger.debug("Get All User Info Lists");
             userInfoDomainList = userInfoRepo.findAll();
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Successfully Get All User Info Lists", userInfoDomainList);
+            return finalServiceResponse;
         }catch (Exception e){
             logger.error("Exception while trying to Get All User Info Lists :: {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return finalServiceResponse;
         }
-        logger.debug(LOG_PREFIX_FINAL_SERVICES_RESPONSE, userInfoDomainList);
-        return userInfoDomainList;
+
     }
 
     public Boolean checkIfUserIdExist(String userId){
@@ -209,7 +201,6 @@ public class UserService implements UserDetailsService {
         UserProfileResponse userProfileResponse = new UserProfileResponse();
         try{
             logger.debug("Start Get User Profile Service :: {}", userId);
-
             Optional<UserInfoDomain> userInfoOptional = userInfoRepo.findUserInfoDomainByUserId(userId);
 
             if(userInfoOptional.isEmpty()){
@@ -236,5 +227,83 @@ public class UserService implements UserDetailsService {
             return userProfileResponse;
         }
     }
+
+    public Map<String, Object> updateUserInfo(String userId, CreateUserRequest request) {
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        try{
+            logger.debug("Update User Service :: {}", request);
+
+            Optional<UserInfoDomain> userInfoDomain = userInfoRepo.findUserInfoDomainByUserId(userId);
+            if(userInfoDomain.isEmpty()){
+                finalServiceResponse = ResponseUtils.formatAPIResponse("400", "User ID Not Found", "");
+                return finalServiceResponse;
+            }
+
+            UserInfoDomain currentUser = userInfoDomain.get();
+
+            createOrUpdateUserInfo(request, currentUser);
+
+            userInfoRepo.save(currentUser);
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("0", "Successfully Create User", currentUser);
+            logger.debug(LOG_PREFIX_FINAL_SERVICES_RESPONSE, finalServiceResponse);
+            return finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception while trying to added new subject :: {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500",e.getMessage(), "");
+            return finalServiceResponse;
+        }
+    }
+
+    public static void createOrUpdateUserInfo(CreateUserRequest request, UserInfoDomain currentUser) {
+        currentUser.setUserId(request.getUserId());
+
+        currentUser.setName(request.getName());
+        currentUser.setPassword(request.getPassword());
+        currentUser.setDateOfBirth(request.getDob());
+        currentUser.setGender(request.getGender());
+
+        String status = request.getStatus() == Boolean.TRUE ? "ACTIVE" : "INACTIVE";
+
+        currentUser.setStatus(status);
+
+        RoleDomain roleDomain = new RoleDomain();
+        roleDomain.setId(request.getRoleId());
+        roleDomain.setRoleName(request.getRole());
+
+        currentUser.setRole(roleDomain);
+        currentUser.setEmail(request.getEmail());
+        currentUser.setPhoneNumber(request.getPhoneNumber());
+        currentUser.setAddress(request.getAddress());
+    }
+
+    public Map<String, Object> updateUserStatus(String userId, ToggleUserStatusRequest toggleUserStatusRequest){
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        try{
+            logger.info("Start - updateUserStatus Service :: {}, {}", userId, toggleUserStatusRequest);
+
+            Optional<UserInfoDomain> userInfoDomainOptional = userInfoRepo.findUserInfoDomainByUserId(userId);
+            if(userInfoDomainOptional.isEmpty()){
+                logger.error("User ID Not Found :: {}", userId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("400", "User ID Not Found", "");
+                return finalServiceResponse;
+            }
+
+            UserInfoDomain userInfoDomain = userInfoDomainOptional.get();
+
+            String userStatus = toggleUserStatusRequest.getStatus() == Boolean.TRUE ? "ACTIVE" : "INACTIVE";
+
+            userInfoDomain.setStatus(userStatus);
+
+            userInfoRepo.save(userInfoDomain);
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Successfully Update User Status", userInfoDomain);
+            return finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception while trying to update user status :: {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500",e.getMessage(), "");
+            return finalServiceResponse;
+        }
+    }
+
 
 }

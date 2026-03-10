@@ -34,4 +34,6 @@ public class CreateExamRequest {
     private Integer hardQuestions;
 
     private int[] questionIds;
+
+    private String userId;
 }

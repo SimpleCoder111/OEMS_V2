@@ -31,4 +31,6 @@ public class CreateUserRequest {
 
     private String address;
 
+    private Boolean status = true;
+
 }

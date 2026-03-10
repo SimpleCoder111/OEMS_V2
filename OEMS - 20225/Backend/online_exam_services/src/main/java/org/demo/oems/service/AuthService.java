@@ -1,5 +1,6 @@
 package org.demo.oems.service;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.UserInfoDomain;
@@ -21,13 +22,12 @@ public class AuthService {
 
     private final AuthenticationManager authenticationManager;
 
-    private static final Logger logger = LogManager.getLogger(AuthService.class);
-
     public AuthService(JwtUtils jwtUtil, AuthenticationManager authenticationManager) {
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
     }
 
+    private static final Logger logger = LogManager.getLogger(AuthService.class);
 
     public AuthResponse loginAuthentication(LoginRequest request) {
         AuthResponse authResponse = new AuthResponse();

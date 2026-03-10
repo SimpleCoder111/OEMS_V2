@@ -18,13 +18,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * JWT Authentication Filter
- *
- * This filter runs on every request (except the public ones defined in WebSecurityConfig).
- * It extracts the JWT from the "Authorization: Bearer <token>" header,
- * validates it, and sets the authenticated user in Spring Security context.
- */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

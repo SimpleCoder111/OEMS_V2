@@ -33,14 +33,15 @@ public class WebSecurityConfig {
                     config.setMaxAge(3600L);  // cache preflight for 1 hour
                     return config;
                 }))
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/teacher/**").hasRole("TEACHER")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/teacher/**").hasRole("TEACHER")
                         .requestMatchers("/api/v1/dashboard/student/**").hasRole("STUDENT")
                         .requestMatchers("/api/v1/exams/student/**").hasRole("STUDENT")
+                        .requestMatchers("/api/v1/user/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -56,9 +57,9 @@ public class WebSecurityConfig {
         return new BCryptPasswordEncoder(12);
     }
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    @Bean(name = "authenticationManager")
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
 

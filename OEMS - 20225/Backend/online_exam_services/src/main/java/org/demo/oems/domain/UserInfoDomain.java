@@ -61,6 +61,9 @@ public class UserInfoDomain implements UserDetails {
     @Column(name = "profile_image_url", length = 512)
     private String profileImageUrl;  // e.g., "/uploads/profile/S2026A0001.jpg"
 
+    @Column(name = "status", length = 20, columnDefinition = "varchar(20) default 'ACTIVE'")
+    private String status = "ACTIVE";  // Default to ACTIVE
+
     // Optional: Default avatar if null
     @Transient
     public String getDisplayProfileImageUrl() {

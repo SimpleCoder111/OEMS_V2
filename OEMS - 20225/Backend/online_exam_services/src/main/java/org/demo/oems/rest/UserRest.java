@@ -1,18 +1,19 @@
 package org.demo.oems.rest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.UserInfoDomain;
-import org.demo.oems.payload.request.SendInviteEmailRequest;
-import org.demo.oems.payload.request.ToggleUserStatusRequest;
-import org.demo.oems.payload.request.UpdateUserRequest;
+import org.demo.oems.payload.request.*;
 import org.demo.oems.payload.response.CreateUserResponse;
 import org.demo.oems.payload.response.GenerateInviteCodeResponse;
 import org.demo.oems.payload.response.SendInviteEmailResponse;
 import org.demo.oems.payload.response.UserListsResponse;
-import org.demo.oems.payload.request.CreateUserRequest;
 import org.demo.oems.payload.response.UserProfileResponse;
 import org.demo.oems.service.UserService;
+import org.demo.oems.utils.ResponseUtils;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/")
 public class UserRest {
 
     private final Logger logger = LogManager.getLogger(UserRest.class);
@@ -35,19 +36,32 @@ public class UserRest {
         this.userService = userService;
     }
 
-    @PostMapping("/createUser")
-    public ResponseEntity<?> createUser(@RequestBody CreateUserRequest request){
+    @PostMapping("/admin/user/create")
+    @Operation(summary = "Admin User Service - Create User", description = "Create User by Admin")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    public ResponseEntity<Map<String, Object>> createUser(@RequestBody CreateUserRequest request){
+        Map<String, Object> apiResponse = new HashMap<>();
         try{
             logger.info("Start Create user Request :: {}", request);
-            JSONObject finalResponse = userService.createUser(request);
-            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(200));
+            apiResponse = userService.createUser(request);
+            logger.debug("API Response :: {}", apiResponse);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error("Exception Happen While Create Class Info {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-    @GetMapping("/getUserListsByRoleId/{roleId}")
+    @GetMapping("/admin/user/{roleId}")
+    @Operation(summary = "Admin User Service - Get Users By Role ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     public ResponseEntity<?> getUserListsByRoleId(@PathVariable Long roleId){
         try{
             logger.info("Start Get User Lists By Role ID :: {}", roleId);
@@ -59,21 +73,26 @@ public class UserRest {
         }
     }
 
-    @GetMapping("/getAllUserLists")
-    public ResponseEntity<?> getAllUserLists() {
+    @Operation(summary = "Admin User Service - Get All Users")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/admin/users")
+    public ResponseEntity<Map<String, Object>> getAllUserLists() {
+        Map<String, Object> apiResponse = new HashMap<>();
         try{
             logger.info("Start Get All User Info Lists Request");
-            List<UserInfoDomain> userInfoDomainList = userService.getAllUserInfoLists();
-            return new ResponseEntity<>(userInfoDomainList, HttpStatusCode.valueOf(200));
+            apiResponse = userService.getAllUserInfoLists();
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error("Exception Happen While Get All User Info Lists {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-
-
-    @PostMapping(value = "/profile/image", consumes = "multipart/form-data")
+    @PostMapping(value = "/user/profile/image", consumes = "multipart/form-data")
     public ResponseEntity<?> uploadProfileImage(@RequestParam("file") MultipartFile file, @RequestParam String userId) {
         try {
             UserProfileResponse userProfileResponse = userService.uploadProfileImage(file, userId);
@@ -84,8 +103,33 @@ public class UserRest {
         }
     }
 
-    @GetMapping("/getUserProfile")
-    public ResponseEntity<?> getUserProfile(@RequestParam String userId) {
+    //Info
+    @Operation(summary = "Admin User Service - Update User Info")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PutMapping("/admin/user/{userId}/update")
+    public ResponseEntity<Map<String, Object>> updateUserInfo(@PathVariable String userId, @RequestBody CreateUserRequest createUserRequest) {
+        logger.info("Start - updateUserInfo API");
+        Map<String, Object> apiResponse = new HashMap<>();
+        try{
+            apiResponse = userService.updateUserInfo(userId, createUserRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception Happen While Get All User Info Lists {}", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Admin User Service - Get All Users")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/user/{userId}/profile")
+    public ResponseEntity<?> getUserProfile(@PathVariable String userId) {
         try{
             logger.info("Start Get User Profile Controller :: {}", userId);
             UserProfileResponse userProfileResponse = userService.getUserProfile(userId);
@@ -96,27 +140,18 @@ public class UserRest {
         }
     }
 
-    @GetMapping("")
-    public UserListsResponse getAllUsers(){
-        return new UserListsResponse();
-    }
-
-    @PostMapping("")
-    public CreateUserResponse createUsers(@RequestBody CreateUserRequest createUserRequest){
-        return new CreateUserResponse();
-    }
-
-    @PutMapping("/{userId}")
-    public ResponseEntity<Map<String, Object>> updateUser(@PathVariable String userId, @RequestBody UpdateUserRequest updateUserRequest){
+    @PutMapping("/admin/user/{userId}/toggle-status")
+    public ResponseEntity<Map<String, Object>> updateUserStatus(@PathVariable String userId, @RequestBody ToggleUserStatusRequest toggleUserStatusRequest){
         Map<String, Object> apiResponse = new HashMap<>();
-        apiResponse.put("status", "0");
-        apiResponse.put("messages", "success");
-        return ResponseEntity.ok(apiResponse);
-    }
-
-    @PutMapping("/{userId}/status")
-    public String updateUserStatus(@PathVariable String userId, @RequestBody ToggleUserStatusRequest toggleUserStatusRequest){
-        return "OK";
+        try{
+            logger.info("Start - updateUserStatus API");
+            apiResponse = userService.updateUserStatus(userId, toggleUserStatusRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception Happen While Update User Status {}", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
     //Send Invite Email
@@ -130,4 +165,6 @@ public class UserRest {
         return new GenerateInviteCodeResponse();
     }
 
+//    POST /api/v1/users/{userId}/invite
+//    POST /api/v1/invite-codes
 }

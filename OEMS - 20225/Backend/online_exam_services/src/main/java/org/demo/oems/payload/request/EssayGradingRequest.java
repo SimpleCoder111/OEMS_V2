@@ -5,10 +5,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class ToggleUserStatusRequest {
-
-    private Boolean status;
-
+@NoArgsConstructor
+public class EssayGradingRequest {
+    private String rubric;
+    private String essay;
 }

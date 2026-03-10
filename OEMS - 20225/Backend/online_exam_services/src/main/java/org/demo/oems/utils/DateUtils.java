@@ -88,15 +88,21 @@ public class DateUtils {
 
     public static String getExamStatus(LocalDateTime examStart, int duration) {
         try {
-            LocalDateTime examFinish = LocalDateTime.now().plusMinutes(duration);
+            logger.debug("Get Exam Status");
+            LocalDateTime examFinish = examStart.plusMinutes(duration);
 
             LocalDateTime now = LocalDateTime.now();
 
+            logger.debug("examFinish :: {}", examFinish);
+            logger.debug("now :: {}", now);
+
             if (now.isBefore(examStart)) {
+                logger.info("Exam is up coming");
                 return "UP_COMING";
             }
 
             if (now.isAfter(examFinish) || now.isEqual(examFinish)) {
+                logger.info("Exam is completed");
                 return "COMPLETED";
             }
 
