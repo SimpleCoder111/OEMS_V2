@@ -3,11 +3,15 @@ package org.demo.oems.service;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.demo.oems.domain.ClassDomain;
+import org.demo.oems.domain.ClassroomDomain;
 import org.demo.oems.domain.RoleDomain;
 import org.demo.oems.domain.UserInfoDomain;
 import org.demo.oems.payload.request.CreateUserRequest;
 import org.demo.oems.payload.request.ToggleUserStatusRequest;
 import org.demo.oems.payload.response.UserProfileResponse;
+import org.demo.oems.repository.ClassRepo;
+import org.demo.oems.repository.ClassroomRepo;
 import org.demo.oems.repository.UserInfoRepo;
 import org.demo.oems.utils.ResponseUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,6 +45,10 @@ public class UserService implements UserDetailsService {
 
     @Value("${app.upload.profile-dir}")
     private String profileUploadDir;
+
+    private final ClassRepo classRepo;
+
+    private final ClassroomRepo classroomRepo;
 
 
     @Override
@@ -305,5 +313,49 @@ public class UserService implements UserDetailsService {
         }
     }
 
+    public Map<String, Object> getStudentListsByTeacherId(String teacherId) {
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        List<UserInfoDomain> studentLists = new ArrayList<>();
+        try{
+            logger.info("Start - getStudentListsByTeacherId Service :: {}", teacherId);
+            List<ClassDomain> classDomainList = classRepo.getClassDomainsByTeacherIdEqualsIgnoreCase(teacherId);
 
+            logger.debug("Class Lists By Teacher ID :: {}", classDomainList);
+            if(classDomainList.isEmpty()){
+                logger.debug("Cannot find class for the teacher ID :: {}", teacherId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("400", "Cannot find class for the teacher ID", "");
+                return finalServiceResponse;
+            }
+
+            for(ClassDomain classDomain : classDomainList){
+               logger.debug("Trying to get student lists for the class ID :: {}", classDomain.getClassId());
+               List<ClassroomDomain> classroomDomains = classroomRepo.findClassroomDomainsByClassId(classDomain.getClassId());
+               logger.debug("Found {} students for the class ID :: {}", classroomDomains.size(), classDomain.getClassId());
+               for(ClassroomDomain classroomEnroll: classroomDomains){
+                     logger.debug("Trying to get student info for the student ID :: {}", classroomEnroll.getStudentId());
+                     Optional<UserInfoDomain> userInfoDomainOptional = userInfoRepo.findUserInfoDomainByUserId(classroomEnroll.getStudentId());
+                     if(userInfoDomainOptional.isPresent()){
+                         UserInfoDomain userInfoDomain = userInfoDomainOptional.get();
+                         logger.debug("Found student info for the student ID :: {}", classroomEnroll.getStudentId());
+                         studentLists.add(userInfoDomain);
+                     }else {
+                         logger.debug("Cannot find student info for the student ID :: {}", classroomEnroll.getStudentId());
+                     }
+               }
+            }
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Successfully Get Student Lists By Teacher ID", studentLists);
+
+            logger.debug("Final Student Lists By Teacher ID :: {}", finalServiceResponse);
+            return finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception while trying to get student lists by teacher ID :: {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500",e.getMessage(), "");
+            return finalServiceResponse;
+        }
+    }
+
+    public Map<String, Object> getStudentListsByClassId(long classId) {
+        return null;
+    }
 }

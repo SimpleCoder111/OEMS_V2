@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -21,4 +22,5 @@ public class SubmitExamResponse {
     private Integer totalQuestions;
     private String message;
     private Boolean isLate;
+    private List<QuestionGradeDetail> questionGradeDetails; // optional - per question breakdown
 }

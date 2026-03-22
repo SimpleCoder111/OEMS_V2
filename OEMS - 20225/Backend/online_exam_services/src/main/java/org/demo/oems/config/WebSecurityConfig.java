@@ -16,6 +16,8 @@ import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.List;
 
+import static org.demo.oems.utils.CommonConstantUtils.*;
+
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
@@ -36,12 +38,19 @@ public class WebSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/api/v1/demo/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/teacher/**").hasRole("TEACHER")
-                        .requestMatchers("/api/v1/dashboard/student/**").hasRole("STUDENT")
-                        .requestMatchers("/api/v1/exams/student/**").hasRole("STUDENT")
-                        .requestMatchers("/api/v1/user/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                        .requestMatchers("/api/v1/admin/**").hasRole(VALUE_ADMIN)
+                        .requestMatchers("/api/v1/teacher/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER)
+                        .requestMatchers("/api/v1/student/**").hasAnyRole(VALUE_STUDENT)
+                        .requestMatchers("/api/v1/ai/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER)
+                        .requestMatchers("/api/v1/user/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER, VALUE_STUDENT)
+                        .requestMatchers("/api/v1/class/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER, VALUE_STUDENT)
+                        .requestMatchers("/api/v1/exam/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER, VALUE_STUDENT)
+                        .requestMatchers("/api/v1/question/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER, VALUE_STUDENT)
+                        .requestMatchers("/api/v1/result/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER, VALUE_STUDENT)
+                        .requestMatchers("/api/v1/subject/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER, VALUE_STUDENT)
+                        .requestMatchers("/api/v1/dashboard/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER, VALUE_STUDENT)
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

@@ -83,6 +83,15 @@ public final class ArrayStringUtils {
         return list.stream().mapToInt(i -> i).toArray();
     }
 
+    public String escapeForPrompt(String input) {
+        if (input == null) return "";
+        return input
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "");
+    }
+
 
 
 }

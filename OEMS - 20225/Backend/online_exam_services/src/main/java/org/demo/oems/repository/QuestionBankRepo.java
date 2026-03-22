@@ -16,9 +16,19 @@ public interface QuestionBankRepo extends JpaRepository<QuestionBankDomain, Long
 
     long countBySubject_Id(Long subjectId);
 
-    long countBySubject_IdAndDifficulty(Long subjectId, QuestionBankDomain.Difficulty difficulty);
+    long countQuestionBankDomainsByDifficulty(String difficulty);
 
-    long countBySubject_IdAndQuestionType(Long subjectId, QuestionBankDomain.QuestionType questionType);
+    long countQuestionBankDomainsByQuestionTypeEqualsIgnoreCase(String questionType);
+
+    long countBySubject_IdAndDifficulty(long subjectId, String difficulty);
+
+    long countBySubject_IdAndQuestionType(long subjectId, String questionType);
+
+    long countAllBySubject_Id(long subjectId);
+
+    List<QuestionBankDomain> findQuestionBankDomainsBySubject_Id(long subjectId);
+
+    List<QuestionBankDomain> findQuestionBankDomainsBySubject_IdOrderByChapter_IdAsc(long subjectId);
 
     void deleteBySubject_Id(Long subjectId);
 
@@ -26,4 +36,5 @@ public interface QuestionBankRepo extends JpaRepository<QuestionBankDomain, Long
 
     void deleteByChapter_Id(Long chapterId);
 
+    List<QuestionBankDomain> findQuestionBankDomainsBySubject_IdOrderByChapter_Id(long subjectId);
 }

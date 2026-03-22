@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/results")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class ResultRest {
 
@@ -29,7 +29,7 @@ public class ResultRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/admin")
+    @GetMapping("/admin/results")
     public ResponseEntity<Map<String, Object>> getAllClassesResult() {
         try {
             logger.debug("Start - getAllClassesResult API");
@@ -43,13 +43,12 @@ public class ResultRest {
         }
     }
 
-
     @Operation(summary = "Teacher Services :: Get Classes Result", description = "Get Classes Result by Class ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/teacher/class/{classId}")
+    @GetMapping("/teacher/results/class/{classId}")
     public ResponseEntity<Map<String, Object>> getClassesResultByClassId(@PathVariable long classId) {
         try {
             logger.debug("Start - getClassesResultByClassId API :: {}", classId);
@@ -68,7 +67,7 @@ public class ResultRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/teacher/exam/{examId}")
+    @GetMapping("/teacher/results/exam/{examId}")
     public ResponseEntity<Map<String, Object>> getClassesResultByExamId(@PathVariable long examId) {
         try {
             logger.debug("Start - getClassesResultByExamId API :: {}", examId);
@@ -88,7 +87,7 @@ public class ResultRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/student/{studentId}")
+    @GetMapping("/student/results/{studentId}")
     public ResponseEntity<Map<String, Object>> getClassesResultByStudentId(@PathVariable String studentId) {
         try {
             logger.debug("Start - getClassesResultByStudentId API :: {}", studentId);

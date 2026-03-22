@@ -7,14 +7,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.UserInfoDomain;
 import org.demo.oems.payload.request.*;
-import org.demo.oems.payload.response.CreateUserResponse;
-import org.demo.oems.payload.response.GenerateInviteCodeResponse;
-import org.demo.oems.payload.response.SendInviteEmailResponse;
-import org.demo.oems.payload.response.UserListsResponse;
 import org.demo.oems.payload.response.UserProfileResponse;
 import org.demo.oems.service.UserService;
 import org.demo.oems.utils.ResponseUtils;
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -92,19 +87,7 @@ public class UserRest {
         }
     }
 
-    @PostMapping(value = "/user/profile/image", consumes = "multipart/form-data")
-    public ResponseEntity<?> uploadProfileImage(@RequestParam("file") MultipartFile file, @RequestParam String userId) {
-        try {
-            UserProfileResponse userProfileResponse = userService.uploadProfileImage(file, userId);
-            return ResponseEntity.ok(userProfileResponse);
-        }catch (Exception e){
-            logger.error("Exception Happen While Start Get User Profile Controller {}", e.getMessage());
-            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
-        }
-    }
-
-    //Info
-    @Operation(summary = "Admin User Service - Update User Info")
+    @Operation(summary = "Admin User Service - Update User Info by User ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
@@ -123,7 +106,42 @@ public class UserRest {
         }
     }
 
-    @Operation(summary = "Admin User Service - Get All Users")
+    @Operation(summary = "Admin User Service - Update User Status (Active/Inactive)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PutMapping("/admin/user/{userId}/toggle-status")
+    public ResponseEntity<Map<String, Object>> updateUserStatus(@PathVariable String userId, @RequestBody ToggleUserStatusRequest toggleUserStatusRequest){
+        Map<String, Object> apiResponse = new HashMap<>();
+        try{
+            logger.info("Start - updateUserStatus API");
+            apiResponse = userService.updateUserStatus(userId, toggleUserStatusRequest);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception Happen While Update User Status {}", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "General User Service - Upload User Profile Image")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping(value = "/user/profile/image", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadProfileImage(@RequestParam("file") MultipartFile file, @RequestParam String userId) {
+        try {
+            UserProfileResponse userProfileResponse = userService.uploadProfileImage(file, userId);
+            return ResponseEntity.ok(userProfileResponse);
+        }catch (Exception e){
+            logger.error("Exception Happen While Start Get User Profile Controller {}", e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "General User Service - Get User Profile by User ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
@@ -140,31 +158,44 @@ public class UserRest {
         }
     }
 
-    @PutMapping("/admin/user/{userId}/toggle-status")
-    public ResponseEntity<Map<String, Object>> updateUserStatus(@PathVariable String userId, @RequestBody ToggleUserStatusRequest toggleUserStatusRequest){
-        Map<String, Object> apiResponse = new HashMap<>();
+    //======================================================================
+    //Teacher User Service APIs Service
+    //======================================================================
+    @Operation(summary = "Teacher User Service - Get All Students Lists")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/teacher/students")
+    public ResponseEntity<Map<String, Object>> getStudentListsByTeacherId(@RequestParam String teacherId) {
         try{
-            logger.info("Start - updateUserStatus API");
-            apiResponse = userService.updateUserStatus(userId, toggleUserStatusRequest);
+            logger.info("Start - getStudentListsByTeacherId Controller :: {}", teacherId);
+            Map<String, Object> apiResponse = userService.getStudentListsByTeacherId(teacherId);
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
-            logger.error("Exception Happen While Update User Status {}", e.getMessage());
-            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            logger.error("Exception - getStudentListsByTeacherId Controller :: {}", e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-    //Send Invite Email
-    @PostMapping("/{userId}/invite")
-    public SendInviteEmailResponse sendInviteEmail(@PathVariable String userId, @RequestBody SendInviteEmailRequest sendInviteEmailRequest ){
-        return new SendInviteEmailResponse();
+    @Operation(summary = "Teacher User Service - Get All Students Lists")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/teacher/students/class/{classId}")
+    public ResponseEntity<Map<String, Object>> getStudentListsByClassId(@PathVariable long classId) {
+        try{
+            logger.info("Start - getStudentListsByClassId API :: {}", classId);
+            Map<String, Object> apiResponse = userService.getStudentListsByClassId(classId);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception - getStudentListsByClassId Controller :: {}", e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
-    @PostMapping("/invite-codes")
-    public GenerateInviteCodeResponse generateInviteCode(){
-        return new GenerateInviteCodeResponse();
-    }
 
-//    POST /api/v1/users/{userId}/invite
-//    POST /api/v1/invite-codes
 }

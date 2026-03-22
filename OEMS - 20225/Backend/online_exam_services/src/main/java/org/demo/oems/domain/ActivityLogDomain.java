@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "activities_log")
 @Data
-public class ActivitesLogDomain {
+public class ActivityLogDomain {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -20,7 +20,7 @@ public class ActivitesLogDomain {
     @Column(name = "user_name")
     private String name;
 
-    @Lob
+
     @Column(name = "user_action", columnDefinition = "text")
     private String action;
 

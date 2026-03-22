@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class OptionListResponse {
 
-    private long optionId;
+    private Long optionId;
 
     private String optionText;
 

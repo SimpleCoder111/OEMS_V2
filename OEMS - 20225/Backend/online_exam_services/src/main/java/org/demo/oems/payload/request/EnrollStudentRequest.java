@@ -7,8 +7,10 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CodeGradingRequest {
-    private String subjectName;
-    private String problemDesc;
-    private String code;
+public class EnrollStudentRequest {
+
+    private String studentId;
+
+    private long classId;
+
 }

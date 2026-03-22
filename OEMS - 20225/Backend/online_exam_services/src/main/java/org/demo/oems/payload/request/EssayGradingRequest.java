@@ -9,5 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class EssayGradingRequest {
     private String rubric;
+
+    private String essayTopic;
+
     private String essay;
 }

@@ -26,9 +26,15 @@ public class QuestionBankInsertRequest {
     @JsonProperty("difficulty")
     private String difficulty;
 
+    @JsonProperty(value = "score")
+    private int score = 0;
+
+    @JsonProperty(value = "correctAnswer")
+    private String correctAnswer;
+
     @JsonProperty("createdBy")
     private String createdBy;
 
     @JsonProperty("optionLists")
-    List<OptionBankInsertRequest> optionLists;
+    List<String> optionLists;
 }

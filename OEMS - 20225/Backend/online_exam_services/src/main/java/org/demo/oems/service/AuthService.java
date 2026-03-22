@@ -1,11 +1,15 @@
 package org.demo.oems.service;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.demo.oems.domain.ActivityLogDomain;
 import org.demo.oems.domain.UserInfoDomain;
 import org.demo.oems.payload.request.LoginRequest;
 import org.demo.oems.payload.response.AuthResponse;
+import org.demo.oems.repository.ActivityLogRepo;
 import org.demo.oems.utils.JwtUtils;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -13,19 +17,20 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 import static org.demo.oems.utils.CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private final JwtUtils jwtUtil;
 
     private final AuthenticationManager authenticationManager;
 
-    public AuthService(JwtUtils jwtUtil, AuthenticationManager authenticationManager) {
-        this.jwtUtil = jwtUtil;
-        this.authenticationManager = authenticationManager;
-    }
+    private final ActivityLogService activityLogService;
+
 
     private static final Logger logger = LogManager.getLogger(AuthService.class);
 
@@ -51,6 +56,9 @@ public class AuthService {
             String accessToken = jwtUtil.generateToken(userDetails);
 
             logger.debug("Successfully authenticate user");
+
+            activityLogService.saveLoginActivity(userDetails.getRole().getRoleName(), userDetails.getUserId(), userDetails.getName(), LocalDateTime.now());
+
             authResponse.setMessages("success");
             authResponse.setStatus("0");
             authResponse.setAccessToken(accessToken);

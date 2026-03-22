@@ -1,8 +1,4 @@
 package org.demo.oems.utils;
-
-
-import org.demo.oems.domain.QuestionBankDomain;
-
 public class CommonConstantUtils {
     private CommonConstantUtils(){}
 
@@ -11,6 +7,8 @@ public class CommonConstantUtils {
     public static final String LOG_PREFIX_EXCEPTION_IN_SERVICE = "Exception in service class {} :: {}";
 
     public static final String LOG_PREFIX_FINAL_SERVICE_RESPONSE = "Final Service Response :: {}";
+
+    public static final String VALUE_ADMIN = "ADMIN";
 
     public static final String VALUE_TEACHER = "TEACHER";
 
@@ -33,5 +31,22 @@ public class CommonConstantUtils {
     public static final String VALUE_EXAM_IN_PROGRESS = "IN_PROGRESS";
 
     public static final String VALUE_EXAM_SUBMITTED = "SUBMITTED";
+
+    public static final String VALUE_MULTIPLE_CHOICE = "MULTIPLE_CHOICE";
+
+    public static final String VALUE_TRUE_FALSE = "TRUE_FALSE";
+
+    public static final String VALUE_CODING = "CODING";
+
+    public static final String VALUE_FILL_IN_THE_BANK = "FILL_IN_THE_BLANK";
+
+    public static final String VALUE_WRITING = "WRITING";
+
+    public static final String VALUE_EASY = "EASY";
+
+    public static final String VALUE_MEDIUM = "MEDIUM";
+
+    public static final String VALUE_HARD = "HARD";
+
 
 }

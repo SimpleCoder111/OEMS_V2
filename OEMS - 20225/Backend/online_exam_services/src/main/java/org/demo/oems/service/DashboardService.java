@@ -10,13 +10,16 @@ import org.demo.oems.domain.*;
 import org.demo.oems.payload.response.*;
 import org.demo.oems.repository.*;
 import org.demo.oems.utils.ResponseUtils;
+import org.hibernate.type.descriptor.java.ObjectJavaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.demo.oems.utils.CommonConstantUtils.*;
 
@@ -30,11 +33,17 @@ public class DashboardService {
 
     private final ExamRepo examRepository;
 
+    private final ExamResultRepo examResultRepository;
+
     private final UserInfoRepo userRepository;
 
     private final RoleRepo roleRepo;
+
     private final ClassroomRepo classroomRepo;
+
     private final ClassRepo classRepo;
+
+    private final ActivityLogService activityLogService;
 
     public DashboardStatisticResponse getDashboardStatistic() {
         try {
@@ -100,36 +109,55 @@ public class DashboardService {
         return sign + String.format("%.0f%%", change);
     }
 
-    public List<GradeDistributionResponse> getOverallGradeDistribution(){
+    public List<GradeDistributionResponse> getOverallGradeDistribution() {
+        // 1. Fetch aggregated data from DB
+        List<GradeCountProjection> results = examResultRepository.findOverallGradeDistribution();
+
+        // 2. Map results to a Map for easy lookup
+        Map<String, Long> gradeMap = results.stream()
+                .collect(Collectors.toMap(GradeCountProjection::getGrade, GradeCountProjection::getCount));
+
+        // 3. Calculate total for percentage math
+        long totalCount = results.stream().mapToLong(GradeCountProjection::getCount).sum();
+
+        // 4. Build response using your predefined scale (A-F)
+        List<String> gradeLevels = List.of("A", "B", "C", "D", "E", "F");
         List<GradeDistributionResponse> serviceResponse = new ArrayList<>();
 
-        GradeDistributionResponse gradeDistributionResponse = new GradeDistributionResponse();
+        for (String level : gradeLevels) {
+            long count = gradeMap.getOrDefault(level, 0L);
+            int percentage = (totalCount > 0)? (int) ((count * 100) / totalCount) : 0;
 
-        String grade = "A";
-        int count = 0;
-        int percentage = 0;
-
-        gradeDistributionResponse.setGrade(grade);
-        gradeDistributionResponse.setCount(count);
-        gradeDistributionResponse.setPercentage(percentage);
-
-        serviceResponse.add(gradeDistributionResponse);
+            serviceResponse.add(GradeDistributionResponse.builder()
+                    .grade(level)
+                    .count((int) count)
+                    .percentage(percentage)
+                    .build());
+        }
 
         return serviceResponse;
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> getDashboardRecentActivities(Integer limit) {
+        Map<String, Object> finalApiResponse = new HashMap<>();
+        try {
+            logger.debug("Start - getDashboardRecentActivities Service :: {}", limit);
 
-    public List<RecentActivitiesResponse> getDashboardRecentActivities() {
-        List<RecentActivitiesResponse> serviceResponse = new ArrayList<>();
-        RecentActivitiesResponse recentActivitiesResponse = new RecentActivitiesResponse();
+            if (limit == null || limit <= 0) {
+                limit = 10; // default limit
+            }
 
-        recentActivitiesResponse.setAction("");
-        recentActivitiesResponse.setId("");
-        recentActivitiesResponse.setUser("");
-        recentActivitiesResponse.setTimestamp("2026-01-17");
-        recentActivitiesResponse.setSubject("");
+            List<ActivityLogDomain> activityLogDomainList = activityLogService.getRecentActivitiesWithLimit(limit);
 
-        return serviceResponse;
+            finalApiResponse = ResponseUtils.formatAPIResponse("200", "Success", activityLogDomainList);
+            logger.debug("Final API Response :: {}", finalApiResponse);
+            return finalApiResponse;
+        }catch (Exception e){
+            logger.error("Exception - getDashboardRecentActivities :: {}", e.getMessage());
+            finalApiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return finalApiResponse;
+        }
 
     }
 

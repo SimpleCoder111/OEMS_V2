@@ -11,6 +11,10 @@ public interface ClassRepo extends JpaRepository<ClassDomain, Long> {
 
     List<ClassDomain> getClassDomainsByTeacherIdEqualsIgnoreCase(String teacherId);
 
+    List<ClassDomain> findClassDomainsByTeacherIdEqualsIgnoreCase(String teacherId);
+
+    List<ClassDomain> findClassDomainsByTeacherId(String teacherId);
+
     long countByClassStartLessThanEqualAndClassEndGreaterThanEqual(
             LocalDateTime now1,
             LocalDateTime now2

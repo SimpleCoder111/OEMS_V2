@@ -1,5 +1,8 @@
 package org.demo.oems.rest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,6 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +30,7 @@ import static org.demo.oems.utils.CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CO
 
 
 @RestController
-@RequestMapping("/api/v1/dashboard")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class DashboardRest {
     private static final Logger logger = LogManager.getLogger(DashboardRest.class);
@@ -34,8 +38,12 @@ public class DashboardRest {
     private final DashboardService dashboardService;
 
 
-
-    @GetMapping("/admin/stats")
+    @GetMapping("/admin/dashboard/stats")
+    @Operation(summary = "Admin Dashboard Service - Get Dashboard Stats")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
     public DashboardStatisticResponse getDashboardStatistics(){
         DashboardStatisticResponse dashboardStatisticResponse = new DashboardStatisticResponse();
         try {
@@ -48,43 +56,49 @@ public class DashboardRest {
         return dashboardStatisticResponse;
     }
 
-    /*
-    Purpose: 2. Fetch recent activities
-    Query params: Optional limit (e.g., ?limit=10)
-    */
-    @GetMapping("/admin/activities")
-//    @PreAuthorize("hasRole('ADMIN')")
-    public List<RecentActivitiesResponse> getRecentActivities(@RequestParam int limit){
-        List<RecentActivitiesResponse> recentActivitiesResponseLists = new ArrayList<>();
-
+    @Operation(summary = "Admin Dashboard Service - Get Recent Activities Default last 10 records")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/admin/dashboard/activities")
+    public ResponseEntity<Map<String, Object>> getRecentActivities(@RequestParam Integer limit){
+        Map<String, Object> apiResponse = new HashMap<>();
         try {
             logger.debug("Trying to Get Dashboard Recent User Activities");
-            recentActivitiesResponseLists = dashboardService.getDashboardRecentActivities();
+            apiResponse = dashboardService.getDashboardRecentActivities(limit);
 
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error(LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Recent User Activities", e.getMessage());
+            apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
-
-
-
-        return recentActivitiesResponseLists;
     }
 
-    @GetMapping("/admin/grades")
+    @Operation(summary = "Admin Dashboard Service - Get Overall Grade Distribution for all subjects")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/admin/dashboard/grades")
     public List<GradeDistributionResponse> getGradeDistribution(){
         List<GradeDistributionResponse> gradeDistributionResponses = new ArrayList<>();
         try {
             logger.debug("Trying to Get Dashboard Grade Distribution");
             gradeDistributionResponses = dashboardService.getOverallGradeDistribution();
-
         }catch (Exception e){
             logger.error(LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Recent User Activities", e.getMessage());
         }
-
         return gradeDistributionResponses;
     }
 
-    @GetMapping("/student/profile")
+    @Operation(summary = "Student Dashboard Service - Get Student Profile Information")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/student/dashboard/profile")
     public ResponseEntity<Map<String, Object>> getStudentProfile(@RequestParam String studentId){
         try{
             logger.debug("Start - getStudentProfile API");
@@ -92,13 +106,18 @@ public class DashboardRest {
             logger.debug("Final API Response :: {}", getStudentProfileResponse);
             return new ResponseEntity<>(getStudentProfileResponse, HttpStatusCode.valueOf(200));
         } catch (Exception e) {
-            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "getAllClassesResult", e.getMessage());
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "getStudentProfile", e.getMessage());
             Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
             return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
         }
     }
 
-    @GetMapping("/student/enrolled-subjects")
+    @Operation(summary = "Student Dashboard Service - Get Student Enrolled Subjects")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/student/dashboard/enrolled-subjects")
     public ResponseEntity<Map<String, Object>> getStudentEnrolledSubject(@RequestParam String studentId){
         try{
             logger.debug("Start - getStudentEnrolledSubject API");
@@ -111,35 +130,4 @@ public class DashboardRest {
             return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
         }
     }
-
-//
-//    @GetMapping("/student/upcoming-exams")
-//
-//    @GetMapping("/student/recent-results")
-//
-//    @GetMapping("/student/leaderboard")
-//
-//    @GetMapping("/student/stats")
-
-//    @GetMapping("/student/stats")
-//    public ResponseEntity<Map<String, Object>> getStudentStats(
-//            @RequestParam String studentId) {
-//
-//        try {
-//            logger.debug("Start - getStudentEnrolledSubjects for studentId: {}", studentId);
-//
-//            Map<String, Object> response = dashboardService.getStudentStats(studentId);
-//
-//            logger.debug("Final API Response: {}", response);
-//            return new ResponseEntity<>(response, HttpStatus.OK);
-//        } catch (Exception e) {
-//            logger.error("Error in getStudentEnrolledSubjects: {}", e.getMessage(), e);
-//            Map<String, Object> errorResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), null);
-//            return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-//        }
-//    }
-
-
-
-
 }

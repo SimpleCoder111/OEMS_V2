@@ -1,6 +1,7 @@
 package org.demo.oems.domain;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -30,6 +31,8 @@ public class UserInfoDomain implements UserDetails {
     @Column(nullable = false, length = 50)
     private String name;
 
+
+    @JsonIgnore
     @Column(nullable = false, length = 256)
     private String password;  // BCrypt hashed
 

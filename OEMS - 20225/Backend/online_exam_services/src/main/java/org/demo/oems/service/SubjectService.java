@@ -598,4 +598,9 @@ public class SubjectService {
         return subjectDomainOptional.orElse(null);
     }
 
+    public ChapterDomain getChapterInfoById(long chapterInfo){
+        Optional<ChapterDomain> chapterDomainOptional = chapterRepo.findById(chapterInfo);
+        return chapterDomainOptional.orElse(null);
+    }
+
 }

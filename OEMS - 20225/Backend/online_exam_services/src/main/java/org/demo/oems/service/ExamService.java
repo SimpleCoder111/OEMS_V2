@@ -14,6 +14,7 @@ import org.demo.oems.payload.request.TakeExamRequest;
 import org.demo.oems.payload.response.*;
 import org.demo.oems.repository.*;
 import org.demo.oems.utils.*;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import javax.swing.text.html.Option;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -33,10 +35,6 @@ import static org.demo.oems.utils.CommonConstantUtils.*;
 public class ExamService {
 
     private final QuestionBankRepo questionBankRepo;
-
-    private final OptionService optionService;
-
-    private final QuestionBankService questionBankService;
 
     private final SubjectService subjectService;
 
@@ -52,65 +50,21 @@ public class ExamService {
 
     private final ExamPaperRepo examPaperRepo;
 
+    private final QuestionService questionService;
+
+    private final AIGradingService aiGradingService;
+
     private static final Logger logger = LogManager.getLogger(ExamService.class);
+
     private final ClassroomRepo classroomRepo;
+
     private final UserInfoRepo userInfoRepo;
+
     private final ExamSessionRepo examSessionRepo;
 
-    public JSONObject getExamPaper(ExamPaperGenerationRequest request){
-        logger.debug("Generate Exam Paper Services with request :: {}", request);
-        JSONObject finalResponse = new JSONObject();
-        List<QuestionBankDomain> combinedLists = new ArrayList<>();
-        try{
-            List<QuestionBankDomain> easyQuestionLists = questionBankRepo.findRandomNativeByDifficultyAndSubjectId("EASY", request.getEasyQuestion(), request.getSubjectId());
-            List<QuestionBankDomain> mediumQuestionLists = questionBankRepo.findRandomNativeByDifficultyAndSubjectId("MEDIUM", request.getMediumQuestion(), request.getSubjectId());
-            List<QuestionBankDomain> hardQuestionLists = questionBankRepo.findRandomNativeByDifficultyAndSubjectId("HARD", request.getHardQuestions(), request.getSubjectId());
-            combinedLists.addAll(easyQuestionLists);
-            combinedLists.addAll(mediumQuestionLists);
-            combinedLists.addAll(hardQuestionLists);
-
-            Optional<SubjectDomain> subjectDomainOptional = subjectRepo.getSubjectDomainsById(request.getSubjectId());
-            SubjectDomain subjectInfo = new SubjectDomain();
-
-            if(subjectDomainOptional.isPresent()) {
-                subjectInfo = subjectDomainOptional.get();
-            }
-
-            List<QuestionBankListsResponse> questionListsResponse = new ArrayList<>();
-            for (QuestionBankDomain questionBank : combinedLists) {
-                QuestionBankListsResponse questionResponse = new QuestionBankListsResponse();
-
-                questionResponse.setQuestionType(String.valueOf(questionBank.getQuestionType()));
-                questionResponse.setQuestionId(questionBank.getId());
-                questionResponse.setQuestionContent(questionBank.getQuestionContent());
-                questionResponse.setDifficulty(String.valueOf(questionBank.getDifficulty()));
-                questionResponse.setCreatedBy(questionBank.getCreatedBy());
-
-                Optional<ChapterDomain> chapterDomainOptional = chapterRepo.findSubjectChapterDomainById(questionBank.getChapter().getId());
-                if(chapterDomainOptional.isPresent()){
-                    ChapterDomain chapterDomain = chapterDomainOptional.get();
-                    questionResponse.setChapterId(chapterDomain.getId());
-                    questionResponse.setChapter(chapterDomain.getChapter());
-                }
-
-                List<OptionBankDomain> optionLists = optionService.getOptionListsByQuestionId(questionBank.getId());
-
-                List<OptionListResponse> optionResponseLists = QuestionBankService.getOptionListResponses(optionLists);
-                questionResponse.setOptionLists(optionResponseLists);
-
-                questionListsResponse.add(questionResponse);
-            }
-
-
-            finalResponse = ResponseUtils.formatServiceResponse("0", "success");
-            finalResponse.put("questionData", questionListsResponse);
-            finalResponse.put("subjectId", subjectInfo.getId());
-            finalResponse.put("subjectName", subjectInfo.getSubjectName());
-        }catch (Exception e){
-            logger.error("Exception while Generate Exam Paper :: {}" , e.getMessage());
-            finalResponse = ResponseUtils.formatServiceResponse("1", e.getMessage());
-        }
-        return finalResponse;
+    ExamSessionDomain findExamSessionById(long examSessionId) {
+        Optional<ExamSessionDomain> examSessionDomainOptional = examSessionRepo.findById(examSessionId);
+        return examSessionDomainOptional.orElse(null);
     }
 
     //===========================================================================
@@ -190,10 +144,11 @@ public class ExamService {
     //2. Update Exam Services
     //===========================================================================
     @Transactional
-    public Map<String, Object> updateExam(CreateExamRequest createExamRequest) {
+    public Map<String, Object> updateExam(long examId, CreateExamRequest createExamRequest) {
         logger.debug("Start - createExam with request :: {}", createExamRequest);
         Map<String, Object> finalServiceResponse = new HashMap<>();
         try{
+            createExamRequest.setExamId(examId);
             LocalDateTime examDate = DateUtils.formatTimestamp(createExamRequest.getExamDate());
 
             int validateExamDate = DateUtils.compareDateWithCurrent(examDate);
@@ -605,7 +560,7 @@ public class ExamService {
         }
     }
 
-    private ExamPaperResponse buildNewExamPaperResponse(ExamDomain exam) {
+    private ExamPaperResponse buildNewExamPaperResponse(ExamDomain exam) throws JsonProcessingException {
         ExamPaperResponse resp = new ExamPaperResponse();
 
         // Common fields (already good)
@@ -641,7 +596,7 @@ public class ExamService {
             int[] qIds = ArrayStringUtils.stringToIntArray(paper.getQuestionIdArrayString());
 
             for (long qId : qIds) {
-                QuestionBankDomain q = questionBankService.findQuestionBankById(qId);
+                QuestionBankDomain q = questionService.getQuestionDetailsById(qId);
                 if (q == null) continue;
 
                 ExamPaperQuestionResponse qr = buildQuestionResponse(q);
@@ -695,21 +650,25 @@ public class ExamService {
     /**
      * Reusable helper to convert QuestionBankDomain → ExamPaperQuestionResponse
      */
-    private ExamPaperQuestionResponse buildQuestionResponse(QuestionBankDomain q) {
+    private ExamPaperQuestionResponse buildQuestionResponse(QuestionBankDomain questionBankDomain) throws JsonProcessingException {
         ExamPaperQuestionResponse qr = new ExamPaperQuestionResponse();
-        qr.setQuestionId(q.getId());
-        qr.setQuestionText(q.getQuestionContent());
-        qr.setQuestionType(q.getQuestionType().name());
-        qr.setChapterName(q.getChapter().getChapter());
-        qr.setChapterId(q.getChapter().getId());
-
-        // Fetch and prepare options
-        List<OptionBankDomain> opts = optionService.getOptionListsByQuestionId(q.getId());
-        List<ExamPaperOptionResponse> optionResponses = getExamPaperOptionResponses(opts);
+        qr.setQuestionId(questionBankDomain.getId());
+        qr.setQuestionText(questionBankDomain.getQuestionContent());
+        qr.setQuestionType(questionBankDomain.getQuestionType());
+        qr.setChapterName(questionBankDomain.getChapter().getChapter());
+        qr.setChapterId(questionBankDomain.getChapter().getId());
+        ObjectMapper mapper = new ObjectMapper();
+        List<String> optionResponses = mapper.readValue(
+                questionBankDomain.getOptionContent(),
+                new TypeReference<List<String>>() {}
+        );
+//        // Fetch and prepare options
+//        List<OptionBankDomain> opts = optionService.getOptionListsByQuestionId(questionBankDomain.getId());
+//        List<ExamPaperOptionResponse> optionResponses = getExamPaperOptionResponses(opts);
 
         // Shuffle options if MCQ or True/False (to prevent order bias)
-        if (QuestionBankDomain.QuestionType.MULTIPLE_CHOICE.name().equals(qr.getQuestionType()) ||
-                QuestionBankDomain.QuestionType.TRUE_FALSE.name().equals(qr.getQuestionType())) {
+        if (VALUE_MULTIPLE_CHOICE.equalsIgnoreCase(qr.getQuestionType()) ||
+                VALUE_TRUE_FALSE.equalsIgnoreCase(qr.getQuestionType())) {
             Collections.shuffle(optionResponses);
         }
 
@@ -747,83 +706,63 @@ public class ExamService {
         return examSessionOptional.orElse(null);
     }
 
-    private static List<ExamPaperOptionResponse> getExamPaperOptionResponses(List<OptionBankDomain> optionDomainLists) {
-        logger.debug("Start - getExamPaperOptionResponses");
-
-        List<ExamPaperOptionResponse> optionResponseLists = new ArrayList<>();
-        for(OptionBankDomain optionBankDomain : optionDomainLists){
-            ExamPaperOptionResponse examPaperOption = new ExamPaperOptionResponse();
-
-            examPaperOption.setOptionText(optionBankDomain.getOptionText());
-            examPaperOption.setOptionId(optionBankDomain.getId());
-
-            optionResponseLists.add(examPaperOption);
-        }
-
-        if(optionResponseLists.size() > 1){
-            logger.debug("Has more than 2 option go shuffle");
-            return ShuffleUtils.shuffleList(optionResponseLists);
-        }
-
-       return optionResponseLists;
-    }
-
-    ExamSessionDomain findExamSessionById(long examSessionId) {
-        Optional<ExamSessionDomain> examSessionDomainOptional = examSessionRepo.findById(examSessionId);
-        return examSessionDomainOptional.orElse(null);
-    }
-
     @Transactional
     public Map<String, Object> saveExamPaperProgress(ExamPaperResponse examPaper) {
+        logger.info("Start - saveExamPaperProgress with request :: {}", examPaper);
         Map<String, Object> finalServiceResponse = new HashMap<>();
-        SaveExamProgressResponse saveExamProgressResponse = new SaveExamProgressResponse();
-        // 1. Find session
-        ExamSessionDomain session = findExamSessionById(examPaper.getExamSessionId());
-        if(session == null) {
-            finalServiceResponse = ResponseUtils.formatAPIResponse("400", "Exam session not found", "");
-            return finalServiceResponse;
-        }
-
-        // Step 1: Validate student
-        UserInfoDomain currentStudent = userInfoRepo.findUserInfoDomainByUserId(examPaper.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
-
-        // 2. Authorization: only owner
-        if (!session.getStudent().getUserId().equals(currentStudent.getUserId())) {
-            throw new AccessDeniedException("Not authorized");
-        }
-
-        // 3. Optional: check exam still active
-        ExamDomain exam = session.getExam();
-        LocalDateTime now = LocalDateTime.now();
-        if (now.isAfter(exam.getExamDate().plusMinutes(exam.getDuration()))) {
-            throw new IllegalStateException("Exam time has ended – cannot save progress");
-        }
-
-        // 4. Serialize full paper + answers to JSON
-        String progressJson;
         try {
+            SaveExamProgressResponse saveExamProgressResponse = new SaveExamProgressResponse();
+            // 1. Find session
+            ExamSessionDomain session = findExamSessionById(examPaper.getExamSessionId());
+            if (session == null) {
+                logger.error("Exam session not found for ID :: {}", examPaper.getExamSessionId());
+                finalServiceResponse = ResponseUtils.formatAPIResponse("400", "Exam session not found", "");
+                return finalServiceResponse;
+            }
+
+            // Step 1: Validate student
+            UserInfoDomain currentStudent = userInfoRepo.findUserInfoDomainByUserId(examPaper.getStudentId())
+                    .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+
+            // 2. Authorization: only owner
+            if (!session.getStudent().getUserId().equals(currentStudent.getUserId())) {
+                logger.error("Unauthorized save attempt by user {} for session {}", currentStudent.getUserId(), session.getId());
+                throw new AccessDeniedException("Not authorized");
+            }
+
+            // 3. Optional: check exam still active
+//            ExamDomain exam = session.getExam();
+//            LocalDateTime now = LocalDateTime.now();
+//            if (now.isAfter(exam.getExamDate().plusMinutes(exam.getDuration()))) {
+//                throw new IllegalStateException("Exam time has ended – cannot save progress");
+//            }
+
+            // 4. Serialize full paper + answers to JSON
+            String progressJson;
+
             ObjectMapper objectMapper = new ObjectMapper();
             progressJson = objectMapper.writeValueAsString(examPaper.getQuestionLists());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize exam progress", e);
+            logger.debug("Saving progress JSON for session {}: {}", session.getId(), progressJson);
+
+            // 5. Update session
+            session.setProgressData(toJson(examPaper));
+            session.setLastSave(LocalDateTime.now());
+            session.setStatus(VALUE_EXAM_IN_PROGRESS);
+
+            examSessionRepo.save(session);
+
+            saveExamProgressResponse.setExamSessionId(session.getId());
+            saveExamProgressResponse.setStatus("saved");
+            saveExamProgressResponse.setLastSaved(LocalDateTime.now());
+            saveExamProgressResponse.setMessage("Progress saved successfully");
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Success", saveExamProgressResponse);
+            return finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception in saveExamPaperProgress {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500", "Internal error: " + e.getMessage(), "");
+            return finalServiceResponse;
         }
-
-        // 5. Update session
-//        session.setProgressData(progressJson);
-        session.setProgressData(toJson(examPaper));
-        session.setLastSave(now);
-        session.setStatus(VALUE_EXAM_IN_PROGRESS);
-
-        examSessionRepo.save(session);
-
-        saveExamProgressResponse.setExamSessionId(session.getId());
-        saveExamProgressResponse.setStatus("saved");
-        saveExamProgressResponse.setLastSaved(now);
-        saveExamProgressResponse.setMessage("Progress saved successfully");
-
-        finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Success", saveExamProgressResponse);
-        return finalServiceResponse;
     }
 
     /**
@@ -832,122 +771,256 @@ public class ExamService {
     @Transactional
     public  Map<String, Object> submitExam(ExamPaperResponse request) {
         Map<String, Object> finalServiceResponse = new HashMap<>();
-        SubmitExamResponse submitExamResponse = new SubmitExamResponse();
+        try {
+            SubmitExamResponse submitExamResponse = new SubmitExamResponse();
 
-        // Step 1: Validate student
-        UserInfoDomain currentStudent = userInfoRepo.findUserInfoDomainByUserId(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+            // Step 1: Validate student
+            UserInfoDomain currentStudent = userInfoRepo.findUserInfoDomainByUserId(request.getStudentId())
+                    .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
-        // 1. Find session
-        ExamSessionDomain session = findExamSessionById(request.getExamSessionId());
-        if(session == null) {
-            finalServiceResponse = ResponseUtils.formatAPIResponse("400", "Exam session not found", "");
+            // 1. Find session
+            ExamSessionDomain session = findExamSessionById(request.getExamSessionId());
+            if (session == null) {
+                finalServiceResponse = ResponseUtils.formatAPIResponse("400", "Exam session not found", "");
+                return finalServiceResponse;
+            }
+
+            // 2. Security check
+            if (!session.getStudent().getId().equals(currentStudent.getId())) {
+                throw new AccessDeniedException("You are not authorized to submit this exam");
+            }
+
+            // 3. Prevent double submit
+            if ("submitted".equals(session.getStatus()) || "graded".equals(session.getStatus())) {
+                throw new IllegalStateException("Exam has already been submitted");
+            }
+
+            // 4. Check time (allow late submit with flag)
+            ExamDomain exam = session.getExam();
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime endTime = exam.getExamDate().plusMinutes(exam.getDuration());
+            boolean isLate = now.isAfter(endTime);
+
+            // 5. Update progress (if client sent latest answers)
+            String finalProgressJson = null;
+            if (request.getQuestionLists() != null && !request.getQuestionLists().isEmpty()) {
+                try {
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    finalProgressJson = objectMapper.writeValueAsString(request.getQuestionLists());
+                } catch (JsonProcessingException e) {
+                    logger.error("Failed to serialize final answers", e);
+                    throw new RuntimeException("Failed to process submission", e);
+                }
+            } else if (StringUtils.isNotBlank(session.getProgressData())) {
+                finalProgressJson = session.getProgressData(); // use last saved
+            } else {
+                throw new IllegalStateException("No progress data available for submission");
+            }
+
+            // 6. Auto-grade the exam
+            GradingResult gradingResult = this.autoGradeExam(finalProgressJson, exam);
+
+            // 7. Finalize session
+            session.setProgressData(toJson(request));  // Save final answers
+            session.setStatus(VALUE_EXAM_SUBMITTED);
+            session.setLastSave(now);
+            session.setSubmitTime(now);
+            session.setScore(gradingResult.getObtainedScore());
+
+
+            // Assuming exam.getExamDate() returns a LocalDateTime
+            LocalDateTime examDate = exam.getExamDate();
+            long timeTakenSecond = Duration.between(examDate, LocalDateTime.now()).toSeconds();
+
+            session.setTimeTaken(timeTakenSecond);
+            examSessionRepo.save(session);
+
+            submitExamResponse = SubmitExamResponse.builder()
+                    .examSessionId(session.getId())
+                    .status(session.getStatus())
+                    .submittedAt(now)
+                    .obtainedScore(gradingResult.getObtainedScore())
+                    .totalPossibleScore(gradingResult.getTotalPossibleScore())
+                    .answeredCount(gradingResult.getAnsweredCount())
+                    .totalQuestions(gradingResult.getTotalQuestions())
+                    .message(isLate ? "Exam submitted late" : "Exam submitted successfully")
+                    .isLate(isLate)
+                    .questionGradeDetails(gradingResult.getDetails())
+                    .build();
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Success", submitExamResponse);
+            return finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception in submitExam {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500", "Internal error: " + e.getMessage(), "");
             return finalServiceResponse;
         }
-
-        // 2. Security check
-        if (!session.getStudent().getId().equals(currentStudent.getId())) {
-            throw new AccessDeniedException("You are not authorized to submit this exam");
-        }
-
-        // 3. Prevent double submit
-        if ("submitted".equals(session.getStatus()) || "graded".equals(session.getStatus())) {
-            throw new IllegalStateException("Exam has already been submitted");
-        }
-
-        // 4. Check time (allow late submit with flag)
-        ExamDomain exam = session.getExam();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = exam.getExamDate().plusMinutes(exam.getDuration());
-        boolean isLate = now.isAfter(endTime);
-
-        // 5. Update progress (if client sent latest answers)
-        String finalProgressJson = null;
-        if (request.getQuestionLists() != null && !request.getQuestionLists().isEmpty()) {
-            try {
-                ObjectMapper objectMapper = new ObjectMapper();
-                finalProgressJson = objectMapper.writeValueAsString(request.getQuestionLists());
-            } catch (JsonProcessingException e) {
-                logger.error("Failed to serialize final answers", e);
-                throw new RuntimeException("Failed to process submission", e);
-            }
-        } else if (StringUtils.isNotBlank(session.getProgressData())) {
-            finalProgressJson = session.getProgressData(); // use last saved
-        } else {
-            throw new IllegalStateException("No progress data available for submission");
-        }
-
-        // 6. Auto-grade the exam
-        GradingResult gradingResult = autoGradeExam(finalProgressJson, exam);
-
-        // 7. Finalize session
-        session.setProgressData(finalProgressJson);
-        session.setStatus(VALUE_EXAM_SUBMITTED);
-        session.setLastSave(now);
-        session.setSubmitTime(now);
-        session.setScore(gradingResult.getObtainedScore());
-
-
-        // Assuming exam.getExamDate() returns a LocalDateTime
-        LocalDateTime examDate = exam.getExamDate();
-        long timeTakenSecond = Duration.between(examDate, LocalDateTime.now()).toSeconds();
-
-        session.setTimeTaken(timeTakenSecond);
-        examSessionRepo.save(session);
-
-        submitExamResponse = SubmitExamResponse.builder()
-                .examSessionId(session.getId())
-                .status(session.getStatus())
-                .submittedAt(now)
-                .obtainedScore(gradingResult.getObtainedScore())
-                .totalPossibleScore(gradingResult.getTotalPossibleScore())
-                .answeredCount(gradingResult.getAnsweredCount())
-                .totalQuestions(gradingResult.getTotalQuestions())
-                .message(isLate ? "Exam submitted late" : "Exam submitted successfully")
-                .isLate(isLate)
-                .build();
-
-        finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Success", submitExamResponse);
-        return finalServiceResponse;
     }
 
     /**
      * Auto-grading logic (MCQ, True/False, Fill-in-Blank)
      */
-    @Transactional(readOnly = true)
+//    @Transactional(readOnly = true)
+//    public GradingResult autoGradeExam(String progressJson, ExamDomain exam) {
+//        List<QuestionGradeDetail> details = new ArrayList<>();
+//        int totalPossible = 0;
+//        int obtained = 0;
+//        int answered = 0;
+//
+//        try {
+//            // Parse saved progress JSON
+//            ObjectMapper mapper = new ObjectMapper();
+//            List<ExamPaperQuestionResponse> submittedQuestions = mapper.readValue(
+//                    progressJson,
+//                    new TypeReference<>() {}
+//            );
+//
+//            int totalQuestions = submittedQuestions.size();
+//
+//            for (ExamPaperQuestionResponse submitted : submittedQuestions) {
+//                Long qId = submitted.getQuestionId();
+//                QuestionBankDomain questionDomain = questionBankRepo.findById(qId).orElse(null);
+//
+//                if (questionDomain == null) {
+//                    logger.warn("Question not found during grading: {}", qId);
+//                    continue;
+//                }
+//
+//                int questionPoints = questionDomain.getPoints();
+//                totalPossible += questionPoints;
+//
+//                String studentAnswer = submitted.getStudentAnswer();
+//                if (studentAnswer == null || studentAnswer.trim().isEmpty()) {
+//                    details.add(QuestionGradeDetail.builder()
+//                            .questionId(qId)
+//                            .questionType(questionDomain.getQuestionType())
+//                            .pointsPossible(questionPoints)
+//                            .pointsObtained(0)
+//                            .isCorrect(false)
+//                            .studentAnswer(null)
+//                            .correctAnswer("N/A")
+//                            .build());
+//                    continue;
+//                }
+//
+//                answered++;
+//
+//                boolean isCorrect = false;
+//                String correctAnswerDisplay = "";
+//
+//                String type = questionDomain.getQuestionType();
+//
+//                // Fetch correct option(s)
+//                String correctAnswer = questionDomain.getCorrectAnswer();
+//
+//                if (type.equalsIgnoreCase(VALUE_MULTIPLE_CHOICE) ||
+//                        type.equalsIgnoreCase(VALUE_TRUE_FALSE)) {
+//
+//                    isCorrect = correctAnswer.equalsIgnoreCase(studentAnswer.trim());
+//                    correctAnswerDisplay = correctAnswer;
+//                }
+//                else if (type.equalsIgnoreCase(VALUE_FILL_IN_THE_BANK)) {
+//                    isCorrect = correctAnswer.equalsIgnoreCase(studentAnswer.trim());
+//                    correctAnswerDisplay = correctAnswer;
+//                }else if (type.equalsIgnoreCase(VALUE_CODING)) {
+//                    // For now: no auto grading
+//                    isCorrect = false;
+//                    correctAnswerDisplay = "Requires AI/manual grading";
+//                }
+//
+//                int pointsEarned = isCorrect ? questionPoints : 0;
+//                obtained += pointsEarned;
+//
+//                details.add(QuestionGradeDetail.builder()
+//                        .questionId(qId)
+//                        .questionType(questionDomain.getQuestionType())
+//                        .pointsPossible(questionPoints)
+//                        .pointsObtained(pointsEarned)
+//                        .isCorrect(isCorrect)
+//                        .studentAnswer(studentAnswer)
+//                        .correctAnswer(correctAnswerDisplay)
+//                        .build());
+//            }
+//
+//            String summary = String.format("%d/%d - %s", obtained, totalPossible,
+//                    obtained >= totalPossible * 0.8 ? "Excellent!" : obtained >= totalPossible * 0.5 ? "Good" : "Needs Improvement");
+//
+//            return GradingResult.builder()
+//                    .obtainedScore(obtained)
+//                    .totalPossibleScore(totalPossible)
+//                    .answeredCount(answered)
+//                    .totalQuestions(totalQuestions)
+//                    .summaryMessage(summary)
+//                    .details(details)   // can be omitted in response if too verbose
+//                    .build();
+//
+//        } catch (Exception e) {
+//            logger.error("Auto-grading failed for exam: {}", exam.getId(), e);
+//            return GradingResult.builder()
+//                    .obtainedScore(0)
+//                    .totalPossibleScore(0)
+//                    .answeredCount(0)
+//                    .totalQuestions(0)
+//                    .summaryMessage("Grading failed – please contact support")
+//                    .build();
+//        }
+//    }
+
+    @Transactional
     public GradingResult autoGradeExam(String progressJson, ExamDomain exam) {
+
         List<QuestionGradeDetail> details = new ArrayList<>();
         int totalPossible = 0;
         int obtained = 0;
         int answered = 0;
 
         try {
-            // Parse saved progress JSON
             ObjectMapper mapper = new ObjectMapper();
+
             List<ExamPaperQuestionResponse> submittedQuestions = mapper.readValue(
                     progressJson,
-                    new TypeReference<>() {}
+                    new TypeReference<List<ExamPaperQuestionResponse>>() {}
             );
 
             int totalQuestions = submittedQuestions.size();
 
-            for (ExamPaperQuestionResponse submitted : submittedQuestions) {
-                Long qId = submitted.getQuestionId();
-                QuestionBankDomain original = questionBankRepo.findById(qId).orElse(null);
+            // ✅ FIX: Batch fetch (avoid N+1 query problem)
+            List<Long> questionIds = submittedQuestions.stream()
+                    .map(ExamPaperQuestionResponse::getQuestionId)
+                    .toList();
 
-                if (original == null) {
-                    logger.warn("Question not found during grading: {}", qId);
+            Map<Long, QuestionBankDomain> questionMap =
+                    questionBankRepo.findAllById(questionIds)
+                            .stream()
+                            .collect(Collectors.toMap(QuestionBankDomain::getId, q -> q));
+
+            // 🔁 Loop through submitted answers
+            for (ExamPaperQuestionResponse submitted : submittedQuestions) {
+
+                Long qId = submitted.getQuestionId();
+                QuestionBankDomain question = questionMap.get(qId);
+
+                if (question == null) {
+                    logger.warn("Question not found: {}", qId);
                     continue;
                 }
 
-                int questionPoints = original.getPoints();
+                int questionPoints = question.getPoints();
                 totalPossible += questionPoints;
 
                 String studentAnswer = submitted.getStudentAnswer();
+                String correctAnswer = question.getCorrectAnswer();
+                String type = question.getQuestionType();
+
+                boolean isCorrect = false;
+                int pointsEarned = 0;
+                String correctAnswerDisplay = "";
+
+                // ❌ Not answered
                 if (studentAnswer == null || studentAnswer.trim().isEmpty()) {
                     details.add(QuestionGradeDetail.builder()
                             .questionId(qId)
-                            .questionType(original.getQuestionType().name())
+                            .questionType(type)
                             .pointsPossible(questionPoints)
                             .pointsObtained(0)
                             .isCorrect(false)
@@ -959,35 +1032,55 @@ public class ExamService {
 
                 answered++;
 
-                boolean isCorrect = false;
-                String correctAnswerDisplay = "";
+                // ✅ OBJECTIVE QUESTIONS
+                if (type.equalsIgnoreCase(VALUE_MULTIPLE_CHOICE) ||
+                        type.equalsIgnoreCase(VALUE_TRUE_FALSE) ||
+                        type.equalsIgnoreCase(VALUE_FILL_IN_THE_BANK)) {
 
-                QuestionBankDomain.QuestionType type = original.getQuestionType();
+                    isCorrect = correctAnswer != null &&
+                            correctAnswer.equalsIgnoreCase(studentAnswer.trim());
 
-                // Fetch correct option(s)
-                OptionBankDomain correctOptions = optionService.findByQuestionIdAndIsCorrectTrue(qId);
-
-                if (type == QuestionBankDomain.QuestionType.MULTIPLE_CHOICE || type == QuestionBankDomain.QuestionType.TRUE_FALSE) {
-
-                    String correctOptionId = correctOptions.getId().toString();
-
-                    isCorrect = correctOptionId.equalsIgnoreCase(studentAnswer.trim());
-                    correctAnswerDisplay = correctOptions.getOptionText();
-
-                }
-                else if (type == QuestionBankDomain.QuestionType.FILL_BLANK) {
-                    // Exact match (case-insensitive, trimmed)
-                    String correctText = correctOptions.getCorrectAnswer().trim();
-                    isCorrect = studentAnswer.trim().equalsIgnoreCase(correctText);
-                    correctAnswerDisplay = correctText;
+                    pointsEarned = isCorrect ? questionPoints : 0;
+                    correctAnswerDisplay = correctAnswer;
                 }
 
-                int pointsEarned = isCorrect ? questionPoints : 0;
+                // 🤖 CODING QUESTIONS (AI GRADING)
+                else if (type.equalsIgnoreCase(VALUE_CODING)) {
+//                    Optional<SubjectDomain> subjectDomainOptional = subjectRepo.findById(exam.getSubjectId());
+//                    String subjectName = subjectDomainOptional.map(SubjectDomain::getSubjectName).orElse("Unknown Subject");
+//                    try {
+//                        GradingResult aiResult = aiGradingService.suggestCodeGrade(
+//                                question.getQuestionContent(),
+//                                studentAnswer
+//                        );
+//
+//                        int aiScore = aiResult.getObtainedScore(); // 0–100
+//
+//                        // Convert AI score → actual question points
+//                        pointsEarned = (aiScore * questionPoints) / 100;
+//
+//                        isCorrect = pointsEarned > 0;
+//                        correctAnswerDisplay = "AI Evaluated";
+//
+//                    } catch (Exception aiEx) {
+//                        logger.error("AI grading failed for question {}", qId, aiEx);
+//
+//                        // fallback
+//                        pointsEarned = 0;
+//                        isCorrect = false;
+//                        correctAnswerDisplay = "AI grading failed";
+//                    }
+
+                    pointsEarned = 0;
+                    isCorrect = false;
+                    correctAnswerDisplay = "Waiting for teacher to review";
+                }
+
                 obtained += pointsEarned;
 
                 details.add(QuestionGradeDetail.builder()
                         .questionId(qId)
-                        .questionType(type.name())
+                        .questionType(type)
                         .pointsPossible(questionPoints)
                         .pointsObtained(pointsEarned)
                         .isCorrect(isCorrect)
@@ -996,8 +1089,20 @@ public class ExamService {
                         .build());
             }
 
-            String summary = String.format("%d/%d - %s", obtained, totalPossible,
-                    obtained >= totalPossible * 0.8 ? "Excellent!" : obtained >= totalPossible * 0.5 ? "Good" : "Needs Improvement");
+            // 🎯 Summary logic
+            String summary;
+            double percentage = totalPossible == 0 ? 0 : (obtained * 100.0 / totalPossible);
+
+            if (percentage >= 80) {
+                summary = "Excellent!";
+            } else if (percentage >= 50) {
+                summary = "Good";
+            } else {
+                summary = "Needs Improvement";
+            }
+
+            summary = String.format("%d/%d (%.2f%%) - %s",
+                    obtained, totalPossible, percentage, summary);
 
             return GradingResult.builder()
                     .obtainedScore(obtained)
@@ -1005,11 +1110,12 @@ public class ExamService {
                     .answeredCount(answered)
                     .totalQuestions(totalQuestions)
                     .summaryMessage(summary)
-                    .details(details)   // can be omitted in response if too verbose
+                    .details(details)
                     .build();
 
         } catch (Exception e) {
-            logger.error("Auto-grading failed for exam: {}", exam.getId(), e);
+            logger.error("Submit exam failed for exam: {}", exam.getId(), e);
+
             return GradingResult.builder()
                     .obtainedScore(0)
                     .totalPossibleScore(0)
@@ -1020,5 +1126,25 @@ public class ExamService {
         }
     }
 
+    public Map<String, Object> getSingleExamInfoDetail(long examId) {
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        try{
+            logger.info("Start - getSingleExamInfoDetail with exam ID :: {}", examId);
+            Optional<ExamDomain> examInfoOptional = examRepo.findById(examId);
 
+            if(examInfoOptional.isEmpty()){
+                logger.error("Exam info not found with ID :: {}", examId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("400", "Exam info not found", "");
+                return finalServiceResponse;
+            }
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Success", examInfoOptional.get());
+            logger.debug("End - getSingleExamInfoDetail with response :: {}", finalServiceResponse);
+            return finalServiceResponse;
+        }catch (Exception e){
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_SERVICE,"getSingleExamInfoDetail", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return finalServiceResponse;
+        }
+    }
 }

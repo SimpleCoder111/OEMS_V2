@@ -7,7 +7,7 @@ import org.demo.oems.service.AIGradingService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/api/v1/ai")
 public class AIGradingRest {
 
     private final AIGradingService aiGradingService;
@@ -18,17 +18,14 @@ public class AIGradingRest {
 
     @PostMapping("/grade-essay")
     public GradingResult gradeEssay(@RequestBody EssayGradingRequest request) {
-        return aiGradingService.suggestEssayGrade(
-                request.rubric(),
-                request.essay()
-        );
+        return aiGradingService.suggestEssayGrade(request);
     }
 
     @PostMapping("/grade-code")
     public GradingResult gradeCode(@RequestBody CodeGradingRequest request) {
         return aiGradingService.suggestCodeGrade(
-                request.problemDesc(),
-                request.code()
+                request.getProblemDesc(),
+                request.getCode()
         );
     }
 

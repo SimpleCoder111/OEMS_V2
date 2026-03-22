@@ -3,28 +3,28 @@ package org.demo.oems.payload.response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.json.simple.JSONObject;
 
 import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class QuestionBankListsResponse {
-    private long questionId;
-
-    private long chapterId;
-
-    private String chapter;
+public class QuestionDetailsResponse {
+    private long id;
 
     private String questionType;
 
     private String questionContent;
 
+    private List<String> optionContent;
+
+    private String correctAnswer;
+
     private String difficulty;
 
     private String createdBy;
 
-    JSONObject options;
+    private String points;
 
+    private String createdAt;
 }

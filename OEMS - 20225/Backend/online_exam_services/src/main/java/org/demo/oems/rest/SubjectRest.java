@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/subjects")
+@RequestMapping("/api/v1")
 public class SubjectRest {
 
     private final Logger logger = LogManager.getLogger(SubjectRest.class);
@@ -28,7 +28,7 @@ public class SubjectRest {
         this.subjectService = subjectService;
     }
 
-    @GetMapping("")
+    @GetMapping("/admin/subjects")
     @Operation(summary = "Admin Subject Service - Get All Subjects Info", description = "Get All Subject Information")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -46,7 +46,7 @@ public class SubjectRest {
         }
     }
 
-    @PostMapping("")
+    @PostMapping("admin/subject")
     @Operation(summary = "Admin Subject Service - Create Subject Info", description = "Create New Subject Info")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -65,7 +65,7 @@ public class SubjectRest {
         }
     }
 
-    @PutMapping("/{subjectId}")
+    @PutMapping("/admin/subject/{subjectId}")
     @Operation(summary = "Admin Subject Service - Update Subject Info", description = "Update Subject Info by Subject ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -83,7 +83,7 @@ public class SubjectRest {
         }
     }
 
-    @PutMapping("/{subjectId}/status")
+    @PutMapping("/admin/subject/{subjectId}/status")
     @Operation(summary = "Admin Subject Service - Toggle Subject Status", description = "Update Subject Status to ACTIVE OR INACTIVE by Subject ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -107,7 +107,7 @@ public class SubjectRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @DeleteMapping("/{subjectId}")
+    @DeleteMapping("/admin/subject/{subjectId}")
     public ResponseEntity<Map<String, Object>> deleteSubjectInfo(@PathVariable long subjectId){
         try{
             Map<String, Object> deleteSubjectResponse = subjectService.deleteSubjectAndChapterRelated(subjectId);
@@ -120,7 +120,7 @@ public class SubjectRest {
         }
     }
 
-    @PostMapping("/{subjectId}/chapters")
+    @PostMapping("/admin/subject/{subjectId}/chapters")
     @Operation(summary = "Admin Subject Service - Create Chapter Info", description = "Insert Multiple Lists of Chapter to Subject with Subject ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -138,7 +138,7 @@ public class SubjectRest {
         }
     }
 
-    @PutMapping("/chapters/{chapterId}")
+    @PutMapping("/admin/subject/chapters/{chapterId}")
     @Operation(summary = "Admin Subject Service - Update Chapter Info", description = "Update Chapter Info By Chapter ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -156,7 +156,7 @@ public class SubjectRest {
         }
     }
 
-    @PutMapping("/chapters/{chapterId}/status")
+    @PutMapping("/admin/subject/chapters/{chapterId}/status")
     @Operation(summary = "Admin Subject Service - Toggle Chapter Status", description = "Update Chapter Status to ACTIVE or INACTIVE")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -174,7 +174,7 @@ public class SubjectRest {
         }
     }
 
-    @DeleteMapping("/chapters/{chapterId}")
+    @DeleteMapping("/admin/subject/chapters/{chapterId}")
     @Operation(summary = "Admin Subject Service - Delete Chapter Info", description = "Delete chapter and questions related to chapter")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -197,7 +197,7 @@ public class SubjectRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @PutMapping("/{subjectId}/chapters/reorder")
+    @PutMapping("/admin/subject/{subjectId}/chapters/reorder")
     public ResponseEntity<Map<String, Object>> updateChapterOrderIndices(@PathVariable long subjectId, @RequestBody List<OrderChapterRequest> orderChapterRequestList){
         try{
             Map<String, Object> orderChapterIndexResponse = subjectService.orderChapterIndex(subjectId, orderChapterRequestList);
@@ -210,7 +210,7 @@ public class SubjectRest {
         }
     }
 
-    @GetMapping("/dashboard")
+    @GetMapping("/admin/subject/dashboard")
     @Operation(summary = "Admin - Subject Service - Get subject summary", description = "Return count of activate subject, total subject, total chapter, total questions")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -228,7 +228,7 @@ public class SubjectRest {
         }
     }
 
-    @GetMapping("/{teacherId}")
+    @GetMapping("/teacher/subject/{teacherId}")
     public ResponseEntity<Map<String, Object>> getAllSubjectsByTeacherId(@PathVariable String teacherId){
         try {
             List<SubjectResponse> subjectResponseList = subjectService.getAllSubjectsByTeacherId(teacherId);

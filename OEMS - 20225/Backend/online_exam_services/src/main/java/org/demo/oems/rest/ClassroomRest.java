@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.demo.oems.payload.request.EnrollStudentRequest;
 import org.demo.oems.payload.request.JoinClassRequest;
 import org.demo.oems.payload.request.UpdateEnrollmentStatusRequest;
 import org.demo.oems.payload.response.*;
@@ -23,7 +24,7 @@ import java.util.Map;
 
 
 @RestController
-@RequestMapping("/api/v1/classes")
+@RequestMapping("/api/v1")
 public class ClassroomRest {
     private final Logger logger = LogManager.getLogger(ClassroomRest.class);
     private final ClassroomService classroomService;
@@ -38,7 +39,7 @@ public class ClassroomRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @PostMapping("")
+    @PostMapping("/admin/class")
     public ResponseEntity<Map<String, Object>> createNewClass(@RequestBody CreateNewClassRequest createNewClassRequest) {
         try {
             Map<String, Object> finalResponse = classroomService.createNewClasses(createNewClassRequest);
@@ -55,7 +56,7 @@ public class ClassroomRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("")
+    @GetMapping("/admin/classes")
     public ResponseEntity<Map<String, Object>> getAllClassesInfo() {
         try {
             logger.debug("Get All Classes Info");
@@ -74,7 +75,7 @@ public class ClassroomRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @PutMapping("/{classId}")
+    @PutMapping("/admin/class/{classId}")
     public ResponseEntity<Map<String, Object>> editClassInfo(@PathVariable long classId, @RequestBody CreateNewClassRequest createNewClassRequest) {
         try {
             logger.debug("Edit Classes Info");
@@ -88,12 +89,50 @@ public class ClassroomRest {
         }
     }
 
+    @Operation(summary = "Teacher Classes Service - Get Pending Class Enrollment Lists", description = "Join Class via Scan or Enter Class Token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/admin/class/enrollment/pending")
+    public ResponseEntity<Map<String, Object>> adminGetPendingEnrollmentsList(@RequestParam long classId) {
+        try {
+            logger.info("Start - getPendingEnrollmentsList API for Class Id :: {}", classId);
+            Map<String, Object> getPendingEnrollmentsListResponse = classroomService.getPendingEnrollmentsList(classId);
+            logger.debug("Final API Response :: {}", getPendingEnrollmentsListResponse);
+            return new ResponseEntity<>(getPendingEnrollmentsListResponse, HttpStatusCode.valueOf(200));
+        } catch (Exception e) {
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Admin Class Service - Delete Class by clss Id")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @DeleteMapping("/admin/class/{classId}")
+    public ResponseEntity<Map<String, Object>> deleteClassById(@PathVariable long classId) {
+        try {
+            logger.debug("Get Teacher Lists");
+            Map<String, Object> teacherListsResponse = classroomService.deleteClassById(classId);
+            logger.debug("Final API Response :: {}", teacherListsResponse);
+            return new ResponseEntity<>(teacherListsResponse, HttpStatusCode.valueOf(200));
+        } catch (Exception e) {
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "deleteClassById", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
     @Operation(summary = "Admin Classes Service - Get Classes Dashboard", description = "")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/summary")
+    @GetMapping("/admin/class/summary")
     public ResponseEntity<Map<String, Object>> getClassesDashboard() {
         try {
             logger.debug("Get Classes Dashboard");
@@ -112,8 +151,7 @@ public class ClassroomRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/teachers")
+    @GetMapping("/admin/class/teachers")
     public ResponseEntity<Map<String, Object>> getAllTeacherLists() {
         try {
             logger.debug("Get Teacher Lists");
@@ -132,7 +170,7 @@ public class ClassroomRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/students")
+    @GetMapping("/admin/class/students")
     public ResponseEntity<Map<String, Object>> getAllStudentLists() {
         try {
             logger.debug("Get Student Lists");
@@ -146,22 +184,72 @@ public class ClassroomRest {
         }
     }
 
-    /*
-    Purpose: Get all students enrolled in a specific class
-     */
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
-    @GetMapping("/{classId}/enrollments")
-    public List<EnrollmentsResponse> getAllStudentEnrolledInClass(@PathVariable long classId) {
-        List<EnrollmentsResponse> enrollmentLists = new ArrayList<>();
-        return enrollmentLists;
+    @GetMapping("/admin/class/{classId}/enrollments")
+    public ResponseEntity<Map<String, Object>> adminGetAllStudentEnrolledInClass(@PathVariable long classId) {
+        try{
+            logger.info("Start - getAllStudentEnrolledInClass API for Class Id :: {}", classId);
+            Map<String, Object> apiResponse = classroomService.getAllStudentEnrolledInClass(classId);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        } catch (Exception e) {
+            logger.error("Exception - getAllStudentEnrolledInClass Controller :: {}" , e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
     }
 
-    /*
-    Purpose: Manage student enrollment (replaces all enrollments for the class)
-   */
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
-    @PutMapping("/{classId}/enrollments")
-    public ResponseEntity<List<EnrollmentsResponse>> updateClassEnrollments(@RequestBody long classId) {
+    @Operation(summary = "Teacher Classes Service - Approve or Reject Student Join Class Request", description = "Approve or Reject Student Join Class Request")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PutMapping("/admin/class/enrollment/update_status")
+    public ResponseEntity<Map<String, Object>> adminApproveOrRejectStudentEnrollment(@RequestBody UpdateEnrollmentStatusRequest updateEnrollmentStatusRequest) {
+        try{
+            logger.debug("Update Status Class Enrollment Id :: {}", updateEnrollmentStatusRequest);
+            Map<String, Object> getPendingEnrollmentsListResponse = classroomService.approveOrRejectStudentEnrollment(updateEnrollmentStatusRequest);
+            logger.debug("Final API Response :: {}", getPendingEnrollmentsListResponse);
+            return new ResponseEntity<>(getPendingEnrollmentsListResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e) {
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Admin Classes Service - Enroll Student to Class", description = "Enroll Student to Class directly by Admin")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("/admin/class/enroll")
+    public ResponseEntity<Map<String, Object>> adminEnrollStudentToClass(@RequestBody EnrollStudentRequest enrollStudentRequest) {
+        try{
+            logger.info("Start - adminEnrollStudentToClass API for Class Id :: {}", enrollStudentRequest);
+            Map<String, Object> enrollStudentResponse = classroomService.enrollStudentToClass(enrollStudentRequest);
+            logger.info("End - adminEnrollStudentToClass API for Class Id :: {}", enrollStudentResponse);
+            return new ResponseEntity<>(enrollStudentResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e) {
+            logger.error("Exception - adminEnrollStudentToClass Controller :: {}" , e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @GetMapping("/teacher/class/{classId}/enrollments")
+    public ResponseEntity<Map<String, Object>> getAllStudentEnrolledInClass(@PathVariable long classId) {
+        try{
+            logger.info("Start - getAllStudentEnrolledInClass API for Class Id :: {}", classId);
+            Map<String, Object> apiResponse = classroomService.getAllStudentEnrolledInClass(classId);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        } catch (Exception e) {
+            logger.error("Exception - getAllStudentEnrolledInClass Controller :: {}" , e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @PutMapping("/teacher/class/{classId}/enrollments")
+    public ResponseEntity<List<EnrollmentsResponse>> updateClassEnrollments(@PathVariable long classId) {
         List<EnrollmentsResponse> enrollmentsResponses = new ArrayList<>();
         try {
             return ResponseEntity.ok(enrollmentsResponses);
@@ -176,7 +264,7 @@ public class ClassroomRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/{teacherId}")
+    @GetMapping("/teacher/classes/{teacherId}")
     public ResponseEntity<Map<String, Object>> getAllClassesInfoForTeacher(@PathVariable String teacherId) {
         try {
             logger.debug("Get All Classes Info");
@@ -195,7 +283,7 @@ public class ClassroomRest {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/{classId}/generate-qr")
+    @GetMapping("/teacher/class/{classId}/generate-qr")
     public ResponseEntity<Map<String, Object>> generateQrForClass(@PathVariable Long classId) {
         try {
             logger.debug("Generate QR for Class");
@@ -209,31 +297,12 @@ public class ClassroomRest {
         }
     }
 
-    @Operation(summary = "Student Classes Service - Request Join Class Service", description = "Join Class via Scan or Enter Class Token")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successful"),
-            @ApiResponse(responseCode = "500", description = "Internal Server Error")
-    })
-    @PostMapping("/join")
-    public ResponseEntity<Map<String, Object>> requestJoinClass(@RequestBody JoinClassRequest joinClassRequest) {
-        try {
-            logger.debug("Generate QR for Class :: {}", joinClassRequest);
-            Map<String, Object> requestJoinClassResponse = classroomService.requestJoinClass(joinClassRequest.getStudentId(), joinClassRequest.getToken());
-            logger.debug("Final API Response :: {}", requestJoinClassResponse);
-            return new ResponseEntity<>(requestJoinClassResponse, HttpStatusCode.valueOf(200));
-        } catch (Exception e) {
-            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "getAllClassesInfo", e.getMessage());
-            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
-            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
-        }
-    }
-
     @Operation(summary = "Teacher Classes Service - Get Pending Class Enrollment Lists", description = "Join Class via Scan or Enter Class Token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/enrollment/pending")
+    @GetMapping("/teacher/class/enrollment/pending")
     public ResponseEntity<Map<String, Object>> getPendingEnrollmentsList(@RequestParam long classId) {
         try {
             logger.debug("Generate QR for Class");
@@ -247,13 +316,12 @@ public class ClassroomRest {
         }
     }
 
-
     @Operation(summary = "Teacher Classes Service - Approve or Reject Student Join Class Request", description = "Approve or Reject Student Join Class Request")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @PutMapping("/enrollment/update_status")
+    @PutMapping("/teacher/class/enrollment/update_status")
     public ResponseEntity<Map<String, Object>> approveOrRejectStudentEnrollment(@RequestBody UpdateEnrollmentStatusRequest updateEnrollmentStatusRequest) {
         try{
             logger.debug("Update Status Class Enrollment Id :: {}", updateEnrollmentStatusRequest);
@@ -267,12 +335,33 @@ public class ClassroomRest {
         }
     }
 
+    @Operation(summary = "Student Classes Service - Request Join Class Service", description = "Join Class via Scan or Enter Class Token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("/student/class/join")
+    public ResponseEntity<Map<String, Object>> requestJoinClass(@RequestBody JoinClassRequest joinClassRequest) {
+        try {
+            logger.debug("Generate QR for Class :: {}", joinClassRequest);
+            Map<String, Object> requestJoinClassResponse = classroomService.requestJoinClass(joinClassRequest.getStudentId(), joinClassRequest.getToken());
+            logger.debug("Final API Response :: {}", requestJoinClassResponse);
+            return new ResponseEntity<>(requestJoinClassResponse, HttpStatusCode.valueOf(200));
+        } catch (Exception e) {
+            logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "getAllClassesInfo", e.getMessage());
+            Map<String, Object> finalResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(finalResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+
+
     @Operation(summary = "Student Services :: Get All Classes By Student ID", description = "Generate Invite QR Code")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
             @ApiResponse(responseCode = "500", description = "Internal Server Error")
     })
-    @GetMapping("/student")
+    @GetMapping("/student/classes")
     public ResponseEntity<Map<String, Object>> getAllClassesByStudentId(@RequestParam String studentId) {
         try {
             logger.debug("Start - getAllClassesByStudentId API {}", studentId);

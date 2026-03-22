@@ -18,4 +18,7 @@ public interface ClassroomRepo extends JpaRepository<ClassroomDomain, Long> {
 
     long countDistinctSubjectByStudentIdAndStatus(String studentId, String status);
 
+    List<ClassroomDomain> findClassroomDomainsByClassId(long classId);
+
+
 }

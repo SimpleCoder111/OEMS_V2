@@ -18,6 +18,4 @@ public interface SubjectChapterRepo  extends JpaRepository<ChapterDomain, Long>{
     long countBySubject_id(Long subjectId);
 
 
-
-
 }

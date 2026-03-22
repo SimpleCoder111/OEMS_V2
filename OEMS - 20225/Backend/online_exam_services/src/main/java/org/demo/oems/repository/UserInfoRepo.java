@@ -12,13 +12,8 @@ public interface UserInfoRepo extends JpaRepository<UserInfoDomain, Long> {
 
     Optional<UserInfoDomain> findUserInfoDomainByUserId(String userId);
 
-    Long countByRoleId(Long roleId);
-
-    Long countByRoleNameIgnoreCase(String roleName);
 
     Long countByRole_RoleNameIgnoreCaseAndCreatedAtBetween(String role, LocalDateTime start, LocalDateTime end);
-
-    Long countByRoleIdAndCreatedAtBetween(Long roleId, LocalDateTime start, LocalDateTime end);
 
     List<UserInfoDomain> findByRole_RoleName(String roleName);
 

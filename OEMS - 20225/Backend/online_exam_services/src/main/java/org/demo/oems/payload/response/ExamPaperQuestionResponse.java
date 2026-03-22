@@ -21,7 +21,7 @@ public class ExamPaperQuestionResponse {
 
     private String chapterName;
 
-    private List<ExamPaperOptionResponse> optionLists;
+    private List<String> optionLists;
 
     private String studentAnswer;
 

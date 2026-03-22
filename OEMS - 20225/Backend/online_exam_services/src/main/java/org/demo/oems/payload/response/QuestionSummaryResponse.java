@@ -13,14 +13,18 @@ public class QuestionSummaryResponse {
 
     private long totalEasyQuestions;
 
-    private long totalHardQuestions;
-
     private long totalMediumQuestions;
 
-    private long totalMCQQuestions;
+    private long totalHardQuestions;
+
+    private long totalQcmQuestions;
 
     private long totalFillBlankQuestions;
 
     private long totalTrueFalseQuestions;
+
+    private long totalCodingQuestions;
+
+    private long totalWritingQuestions;
 
 }
