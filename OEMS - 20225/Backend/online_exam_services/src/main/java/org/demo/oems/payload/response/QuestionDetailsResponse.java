@@ -12,6 +12,12 @@ import java.util.List;
 public class QuestionDetailsResponse {
     private long id;
 
+    private long chapterId;
+
+    private String chapterName;
+
+    private int chapterOrder;
+
     private String questionType;
 
     private String questionContent;

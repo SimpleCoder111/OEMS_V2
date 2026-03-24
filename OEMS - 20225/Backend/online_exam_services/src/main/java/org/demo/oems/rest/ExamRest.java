@@ -247,25 +247,6 @@ public class ExamRest {
         }
     }
 
-    @Operation(summary = "Student Exam Service - Submit Exam Paper", description = "Submit Exam Paper")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successful"),
-            @ApiResponse(responseCode = "500", description = "Internal Server Error")
-    })
-    @PostMapping("/student/exam/submit")
-    public ResponseEntity<Map<String, Object>> submitExamPaper(@RequestBody ExamPaperResponse examPaperSubmitRequest){
-        try{
-            logger.info("Start - submitExamPaper Controller :: {}", examPaperSubmitRequest);
-            Map<String, Object> apiResponse = examService.submitExam(examPaperSubmitRequest);
-            logger.info("End - submitExamPaper Controller :: {}", apiResponse);
-            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
-        }catch (Exception e){
-            logger.error("Exception - submitExamPaper Controller :: {}", e.getMessage());
-            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
-            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
-        }
-    }
-
     @Operation(summary = "Student Exam Service - Save Progress", description = "Save Exam Paper Progress")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -282,6 +263,25 @@ public class ExamRest {
         }catch (Exception e){
             logger.error("Exception - saveExamPaperProgress Controller :: {}", e.getMessage());
             apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Student Exam Service - Submit Exam Paper", description = "Submit Exam Paper")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("/student/exam/submit")
+    public ResponseEntity<Map<String, Object>> submitExamPaper(@RequestBody ExamPaperResponse examPaperSubmitRequest){
+        try{
+            logger.info("Start - submitExamPaper Controller :: {}", examPaperSubmitRequest);
+            Map<String, Object> apiResponse = examService.submitExam(examPaperSubmitRequest);
+            logger.info("End - submitExamPaper Controller :: {}", apiResponse);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception - submitExamPaper Controller :: {}", e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }

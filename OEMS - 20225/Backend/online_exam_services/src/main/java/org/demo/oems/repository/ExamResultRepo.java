@@ -5,10 +5,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ExamResultRepo extends JpaRepository<ExamResultDomain, Long> {
 
    List<ExamResultDomain> findExamResultDomainByStudentId(String studentId);
+
+   Optional<ExamResultDomain> findExamResultDomainByStudentIdAndExam_Id(String studentId, long examId);
 
    List<ExamResultDomain> findExamResultDomainByExam_Id(long examId);
 

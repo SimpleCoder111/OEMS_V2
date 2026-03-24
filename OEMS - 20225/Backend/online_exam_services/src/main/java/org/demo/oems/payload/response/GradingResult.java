@@ -19,6 +19,9 @@ public class GradingResult {
     private int totalQuestions;
 
     private String summaryMessage;
+
+    private String suggestionForImprovement;
+
     // e.g. "85/100 - Excellent!"
     private List<QuestionGradeDetail> details; // optional – per question breakdown
 }

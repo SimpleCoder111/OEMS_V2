@@ -9,20 +9,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.*;
 import org.demo.oems.payload.request.CreateExamRequest;
-import org.demo.oems.payload.request.ExamPaperGenerationRequest;
 import org.demo.oems.payload.request.TakeExamRequest;
 import org.demo.oems.payload.response.*;
 import org.demo.oems.repository.*;
 import org.demo.oems.utils.*;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
 
-import javax.swing.text.html.Option;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -33,6 +27,8 @@ import static org.demo.oems.utils.CommonConstantUtils.*;
 @Service
 @RequiredArgsConstructor
 public class ExamService {
+
+    private final ExamResultRepo examResultRepo;
 
     private final QuestionBankRepo questionBankRepo;
 
@@ -286,7 +282,7 @@ public class ExamService {
                 long classId = classDomain.getClassId();
 
                 logger.debug("Step 2 :: Find Exam Info Related to Class ID {} and Subject ID {}", classId, subjectId);
-                List<ExamDomain> examLists = examRepo.getExamDomainsByClassIdAndSubjectId(subjectId, classId);
+                List<ExamDomain> examLists = examRepo.getExamDomainsByClassIdAndSubjectId(classId, subjectId);
 
                 examListsResponses = buildExamListsResponse(examLists);
                 finalExamListsResponse.addAll(examListsResponses);
@@ -772,6 +768,7 @@ public class ExamService {
     public  Map<String, Object> submitExam(ExamPaperResponse request) {
         Map<String, Object> finalServiceResponse = new HashMap<>();
         try {
+            logger.info("Start - submitExam with request :: {}", request);
             SubmitExamResponse submitExamResponse = new SubmitExamResponse();
 
             // Step 1: Validate student
@@ -781,25 +778,26 @@ public class ExamService {
             // 1. Find session
             ExamSessionDomain session = findExamSessionById(request.getExamSessionId());
             if (session == null) {
+                logger.error("Exam session not found for ID :: {}", request.getExamSessionId());
                 finalServiceResponse = ResponseUtils.formatAPIResponse("400", "Exam session not found", "");
                 return finalServiceResponse;
             }
 
             // 2. Security check
             if (!session.getStudent().getId().equals(currentStudent.getId())) {
+                logger.error("Unauthorized submit attempt by user {} for session {}", currentStudent.getUserId(), session.getId());
                 throw new AccessDeniedException("You are not authorized to submit this exam");
             }
 
             // 3. Prevent double submit
             if ("submitted".equals(session.getStatus()) || "graded".equals(session.getStatus())) {
+                logger.error("Exam session {} has already been submitted or graded", session.getId());
                 throw new IllegalStateException("Exam has already been submitted");
             }
 
             // 4. Check time (allow late submit with flag)
             ExamDomain exam = session.getExam();
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime endTime = exam.getExamDate().plusMinutes(exam.getDuration());
-            boolean isLate = now.isAfter(endTime);
 
             // 5. Update progress (if client sent latest answers)
             String finalProgressJson = null;
@@ -818,7 +816,7 @@ public class ExamService {
             }
 
             // 6. Auto-grade the exam
-            GradingResult gradingResult = this.autoGradeExam(finalProgressJson, exam);
+            GradingResult gradingResult = this.autoGradeExam(finalProgressJson, exam, currentStudent.getUserId());
 
             // 7. Finalize session
             session.setProgressData(toJson(request));  // Save final answers
@@ -843,8 +841,7 @@ public class ExamService {
                     .totalPossibleScore(gradingResult.getTotalPossibleScore())
                     .answeredCount(gradingResult.getAnsweredCount())
                     .totalQuestions(gradingResult.getTotalQuestions())
-                    .message(isLate ? "Exam submitted late" : "Exam submitted successfully")
-                    .isLate(isLate)
+                    .message("Exam submitted successfully")
                     .questionGradeDetails(gradingResult.getDetails())
                     .build();
 
@@ -857,43 +854,65 @@ public class ExamService {
         }
     }
 
-    /**
-     * Auto-grading logic (MCQ, True/False, Fill-in-Blank)
-     */
-//    @Transactional(readOnly = true)
-//    public GradingResult autoGradeExam(String progressJson, ExamDomain exam) {
+//    public GradingResult autoGradeExam(String progressJson, ExamDomain exam, String studentId) {
+//
 //        List<QuestionGradeDetail> details = new ArrayList<>();
 //        int totalPossible = 0;
 //        int obtained = 0;
 //        int answered = 0;
 //
+//        boolean isScored = true;
+//        boolean isFinal = true;
 //        try {
-//            // Parse saved progress JSON
 //            ObjectMapper mapper = new ObjectMapper();
+//
 //            List<ExamPaperQuestionResponse> submittedQuestions = mapper.readValue(
 //                    progressJson,
-//                    new TypeReference<>() {}
+//                    new TypeReference<List<ExamPaperQuestionResponse>>() {}
 //            );
 //
 //            int totalQuestions = submittedQuestions.size();
 //
-//            for (ExamPaperQuestionResponse submitted : submittedQuestions) {
-//                Long qId = submitted.getQuestionId();
-//                QuestionBankDomain questionDomain = questionBankRepo.findById(qId).orElse(null);
+//            // ✅ FIX: Batch fetch (avoid N+1 query problem)
+//            List<Long> questionIds = submittedQuestions.stream()
+//                    .map(ExamPaperQuestionResponse::getQuestionId)
+//                    .toList();
 //
-//                if (questionDomain == null) {
-//                    logger.warn("Question not found during grading: {}", qId);
+//            Map<Long, QuestionBankDomain> questionMap =
+//                    questionBankRepo.findAllById(questionIds)
+//                            .stream()
+//                            .collect(Collectors.toMap(QuestionBankDomain::getId, q -> q));
+//
+//            // 🔁 Loop through submitted answers
+//            for (ExamPaperQuestionResponse submitted : submittedQuestions) {
+//
+//                Long qId = submitted.getQuestionId();
+//                QuestionBankDomain question = questionMap.get(qId);
+//
+//                if (question == null) {
+//                    logger.warn("Question not found: {}", qId);
 //                    continue;
 //                }
 //
-//                int questionPoints = questionDomain.getPoints();
+//                int questionPoints = question.getPoints();
 //                totalPossible += questionPoints;
 //
 //                String studentAnswer = submitted.getStudentAnswer();
+//                String correctAnswer = question.getCorrectAnswer();
+//                String type = question.getQuestionType();
+//
+//                boolean isCorrect = false;
+//                int pointsEarned = 0;
+//                String correctAnswerDisplay = "";
+//
+//
+//                // ❌ Not answered
 //                if (studentAnswer == null || studentAnswer.trim().isEmpty()) {
 //                    details.add(QuestionGradeDetail.builder()
 //                            .questionId(qId)
-//                            .questionType(questionDomain.getQuestionType())
+//                            .questionContent(question.getQuestionContent())
+//                            .questionType(type)
+//                            .questionDifficulty(question.getDifficulty())
 //                            .pointsPossible(questionPoints)
 //                            .pointsObtained(0)
 //                            .isCorrect(false)
@@ -905,60 +924,79 @@ public class ExamService {
 //
 //                answered++;
 //
-//                boolean isCorrect = false;
-//                String correctAnswerDisplay = "";
-//
-//                String type = questionDomain.getQuestionType();
-//
-//                // Fetch correct option(s)
-//                String correctAnswer = questionDomain.getCorrectAnswer();
-//
+//                // ✅ OBJECTIVE QUESTIONS
 //                if (type.equalsIgnoreCase(VALUE_MULTIPLE_CHOICE) ||
-//                        type.equalsIgnoreCase(VALUE_TRUE_FALSE)) {
+//                        type.equalsIgnoreCase(VALUE_TRUE_FALSE) ||
+//                        type.equalsIgnoreCase(VALUE_FILL_IN_THE_BANK)) {
 //
-//                    isCorrect = correctAnswer.equalsIgnoreCase(studentAnswer.trim());
+//                    isScored = true;
+//                    isCorrect = correctAnswer != null &&
+//                            correctAnswer.equalsIgnoreCase(studentAnswer.trim());
+//
+//                    pointsEarned = isCorrect ? questionPoints : 0;
 //                    correctAnswerDisplay = correctAnswer;
 //                }
-//                else if (type.equalsIgnoreCase(VALUE_FILL_IN_THE_BANK)) {
-//                    isCorrect = correctAnswer.equalsIgnoreCase(studentAnswer.trim());
-//                    correctAnswerDisplay = correctAnswer;
-//                }else if (type.equalsIgnoreCase(VALUE_CODING)) {
-//                    // For now: no auto grading
+//
+//                // 🤖 CODING QUESTIONS (AI GRADING)
+//                else if (type.equalsIgnoreCase(VALUE_CODING) || type.equalsIgnoreCase(VALUE_WRITING)) {
+//                    isScored = false;
+//                    isFinal = false;
+//                    pointsEarned = 0;
 //                    isCorrect = false;
-//                    correctAnswerDisplay = "Requires AI/manual grading";
+//                    correctAnswerDisplay = "Waiting for teacher to review";
 //                }
 //
-//                int pointsEarned = isCorrect ? questionPoints : 0;
-//                obtained += pointsEarned;
+//                logger.debug("isScore :: {}", isScored);
 //
+//                obtained += pointsEarned;
 //                details.add(QuestionGradeDetail.builder()
 //                        .questionId(qId)
-//                        .questionType(questionDomain.getQuestionType())
+//                        .questionType(type)
+//                        .questionContent(question.getQuestionContent())
+//                        .questionDifficulty(question.getDifficulty())
 //                        .pointsPossible(questionPoints)
 //                        .pointsObtained(pointsEarned)
+//                        .isScore(isScored)
 //                        .isCorrect(isCorrect)
 //                        .studentAnswer(studentAnswer)
 //                        .correctAnswer(correctAnswerDisplay)
 //                        .build());
 //            }
 //
-//            String summary = String.format("%d/%d - %s", obtained, totalPossible,
-//                    obtained >= totalPossible * 0.8 ? "Excellent!" : obtained >= totalPossible * 0.5 ? "Good" : "Needs Improvement");
+//            //8. Save Exam Result
+//            ExamResultDomain examResultDomain = new ExamResultDomain();
+//            examResultDomain.setExam(exam);
+//            examResultDomain.setStudentId(studentId);
+//            examResultDomain.setScore(obtained);
 //
+//            String detailsString = mapper.writeValueAsString(details);
+//            examResultDomain.setDetails(detailsString);
+//
+//            String status = isFinal ? "GRADED" : "PENDING_REVIEW";
+//            String summaryMessage = isFinal ? "Grading complete" : "Awaiting teacher review for subjective questions";
+//            examResultDomain.setStatus(status);
+//
+//            examResultDomain.setTimeTaken(0);
+//            examResultDomain.setGradedAt(LocalDateTime.now());
+//
+//            logger.info("Saving exam result domain for student {}: {}", studentId, examResultDomain);
+//
+//            examResultRepo.save(examResultDomain);
 //            return GradingResult.builder()
-//                    .obtainedScore(obtained)
-//                    .totalPossibleScore(totalPossible)
 //                    .answeredCount(answered)
+//                    .obtainedScore(obtained)
+//                    .totalPossibleScore(100)
 //                    .totalQuestions(totalQuestions)
-//                    .summaryMessage(summary)
-//                    .details(details)   // can be omitted in response if too verbose
+//                    .details(details)
+//                    .summaryMessage(summaryMessage)
 //                    .build();
 //
 //        } catch (Exception e) {
-//            logger.error("Auto-grading failed for exam: {}", exam.getId(), e);
+//            logger.error("Submit exam failed for exam: {}", exam.getId(), e);
+//
 //            return GradingResult.builder()
 //                    .obtainedScore(0)
-//                    .totalPossibleScore(0)
+//                    .totalPossibleScore(100)
 //                    .answeredCount(0)
 //                    .totalQuestions(0)
 //                    .summaryMessage("Grading failed – please contact support")
@@ -966,164 +1004,152 @@ public class ExamService {
 //        }
 //    }
 
-    @Transactional
-    public GradingResult autoGradeExam(String progressJson, ExamDomain exam) {
-
+    public GradingResult autoGradeExam(String progressJson, ExamDomain exam, String studentId) {
         List<QuestionGradeDetail> details = new ArrayList<>();
-        int totalPossible = 0;
-        int obtained = 0;
+        double totalObtainedPoints = 0; // Use double for precise weighted math
         int answered = 0;
+        boolean isFinal = true;
 
         try {
             ObjectMapper mapper = new ObjectMapper();
-
             List<ExamPaperQuestionResponse> submittedQuestions = mapper.readValue(
                     progressJson,
                     new TypeReference<List<ExamPaperQuestionResponse>>() {}
             );
 
-            int totalQuestions = submittedQuestions.size();
+            // 1. Pre-process: Count difficulty distribution and fetch questions
+            List<Long> qIds = submittedQuestions.stream().map(ExamPaperQuestionResponse::getQuestionId).toList();
+            Map<Long, QuestionBankDomain> questionMap = questionBankRepo.findAllById(qIds)
+                    .stream().collect(Collectors.toMap(QuestionBankDomain::getId, q -> q));
 
-            // ✅ FIX: Batch fetch (avoid N+1 query problem)
-            List<Long> questionIds = submittedQuestions.stream()
-                    .map(ExamPaperQuestionResponse::getQuestionId)
-                    .toList();
+            long easyCount = 0, medCount = 0, hardCount = 0;
+            for (ExamPaperQuestionResponse sq : submittedQuestions) {
+                QuestionBankDomain q = questionMap.get(sq.getQuestionId());
+                if (q == null) continue;
+                String diff = q.getDifficulty().toUpperCase();
+                if (diff.contains("EASY")) easyCount++;
+                else if (diff.contains("MEDIUM")) medCount++;
+                else if (diff.contains("HARD")) hardCount++;
+            }
 
-            Map<Long, QuestionBankDomain> questionMap =
-                    questionBankRepo.findAllById(questionIds)
-                            .stream()
-                            .collect(Collectors.toMap(QuestionBankDomain::getId, q -> q));
+            // 2. Calculate the base point unit (Value of 1 'Easy' question)
+            // Ratio 1:2:4 (Easy:Medium:Hard)
+            double weightedTotalUnits = (easyCount * 1.0) + (medCount * 2.0) + (hardCount * 4.0);
+            double baseUnit = (weightedTotalUnits > 0)? (100.0 / weightedTotalUnits) : 0;
 
-            // 🔁 Loop through submitted answers
+            // 3. Loop through and grade
             for (ExamPaperQuestionResponse submitted : submittedQuestions) {
+                QuestionBankDomain question = questionMap.get(submitted.getQuestionId());
+                if (question == null) continue;
 
-                Long qId = submitted.getQuestionId();
-                QuestionBankDomain question = questionMap.get(qId);
+                // Determine points for THIS question based on difficulty
+                String diff = question.getDifficulty().toUpperCase();
+                double questionWeight = diff.contains("HARD")? 4.0 : (diff.contains("MEDIUM")? 2.0 : 1.0);
+                double potentialPoints = baseUnit * questionWeight;
 
-                if (question == null) {
-                    logger.warn("Question not found: {}", qId);
-                    continue;
-                }
-
-                int questionPoints = question.getPoints();
-                totalPossible += questionPoints;
-
-                String studentAnswer = submitted.getStudentAnswer();
-                String correctAnswer = question.getCorrectAnswer();
                 String type = question.getQuestionType();
-
+                String studentAnswer = submitted.getStudentAnswer();
                 boolean isCorrect = false;
-                int pointsEarned = 0;
-                String correctAnswerDisplay = "";
+                double pointsEarned = 0;
+                String feedback = "";
 
-                // ❌ Not answered
                 if (studentAnswer == null || studentAnswer.trim().isEmpty()) {
-                    details.add(QuestionGradeDetail.builder()
-                            .questionId(qId)
-                            .questionType(type)
-                            .pointsPossible(questionPoints)
-                            .pointsObtained(0)
-                            .isCorrect(false)
-                            .studentAnswer(null)
-                            .correctAnswer("N/A")
-                            .build());
-                    continue;
+                    feedback = "No answer provided.";
+                } else {
+                    answered++;
+                    // ✅ OBJECTIVE GRADING
+                    if (isObjective(type)) {
+                        isCorrect = question.getCorrectAnswer().equalsIgnoreCase(studentAnswer.trim());
+                        pointsEarned = isCorrect? potentialPoints : 0;
+                        feedback = isCorrect? "Correct" : "Incorrect. Expected: " + question.getCorrectAnswer();
+                    }
+                    // 🤖 SUBJECTIVE (Requires AI or Manual Review)
+                    else {
+                        isFinal = false; // Cannot be final if coding/writing exists
+                        pointsEarned = 0;
+                        feedback = "Waiting for teacher to review";
+                    }
                 }
-
-                answered++;
-
-                // ✅ OBJECTIVE QUESTIONS
-                if (type.equalsIgnoreCase(VALUE_MULTIPLE_CHOICE) ||
-                        type.equalsIgnoreCase(VALUE_TRUE_FALSE) ||
-                        type.equalsIgnoreCase(VALUE_FILL_IN_THE_BANK)) {
-
-                    isCorrect = correctAnswer != null &&
-                            correctAnswer.equalsIgnoreCase(studentAnswer.trim());
-
-                    pointsEarned = isCorrect ? questionPoints : 0;
-                    correctAnswerDisplay = correctAnswer;
-                }
-
-                // 🤖 CODING QUESTIONS (AI GRADING)
-                else if (type.equalsIgnoreCase(VALUE_CODING)) {
-//                    Optional<SubjectDomain> subjectDomainOptional = subjectRepo.findById(exam.getSubjectId());
-//                    String subjectName = subjectDomainOptional.map(SubjectDomain::getSubjectName).orElse("Unknown Subject");
-//                    try {
-//                        GradingResult aiResult = aiGradingService.suggestCodeGrade(
-//                                question.getQuestionContent(),
-//                                studentAnswer
-//                        );
-//
-//                        int aiScore = aiResult.getObtainedScore(); // 0–100
-//
-//                        // Convert AI score → actual question points
-//                        pointsEarned = (aiScore * questionPoints) / 100;
-//
-//                        isCorrect = pointsEarned > 0;
-//                        correctAnswerDisplay = "AI Evaluated";
-//
-//                    } catch (Exception aiEx) {
-//                        logger.error("AI grading failed for question {}", qId, aiEx);
-//
-//                        // fallback
-//                        pointsEarned = 0;
-//                        isCorrect = false;
-//                        correctAnswerDisplay = "AI grading failed";
-//                    }
-
-                    pointsEarned = 0;
-                    isCorrect = false;
-                    correctAnswerDisplay = "Waiting for teacher to review";
-                }
-
-                obtained += pointsEarned;
+                totalObtainedPoints += pointsEarned;
 
                 details.add(QuestionGradeDetail.builder()
-                        .questionId(qId)
+                        .questionContent(question.getQuestionContent())
+                        .questionId(question.getId())
                         .questionType(type)
-                        .pointsPossible(questionPoints)
-                        .pointsObtained(pointsEarned)
+                        .questionDifficulty(question.getDifficulty())
+                        .pointsPossible((int) Math.round(potentialPoints))
+                        .pointsObtained((int) Math.round(pointsEarned))
+                        .isScoreEdit(false)
                         .isCorrect(isCorrect)
                         .studentAnswer(studentAnswer)
-                        .correctAnswer(correctAnswerDisplay)
+                        .correctAnswer(isObjective(type)? question.getCorrectAnswer() : "N/A")
+                        .summaryMessage(feedback)
                         .build());
             }
 
-            // 🎯 Summary logic
-            String summary;
-            double percentage = totalPossible == 0 ? 0 : (obtained * 100.0 / totalPossible);
+            // 4. Finalize result
+            int finalScore = (int) Math.round(totalObtainedPoints);
+            String status = isFinal? "GRADED" : "PENDING_REVIEW";
 
-            if (percentage >= 80) {
-                summary = "Excellent!";
-            } else if (percentage >= 50) {
-                summary = "Good";
-            } else {
-                summary = "Needs Improvement";
-            }
+            String grade = getEvaluateGrade(status, finalScore);
 
-            summary = String.format("%d/%d (%.2f%%) - %s",
-                    obtained, totalPossible, percentage, summary);
+            Optional<ExamResultDomain> existExamResult = examResultRepo.findExamResultDomainByStudentIdAndExam_Id(studentId, exam.getId());
+
+            ExamResultDomain resultDomain = existExamResult.orElseGet(ExamResultDomain::new);
+
+            LocalDateTime now = LocalDateTime.now();
+            long timeTakenMillis = Duration.between(exam.getExamDate(), now).toMillis();
+            resultDomain.setExam(exam);
+            resultDomain.setGrade(grade);
+            resultDomain.setTimeTaken(timeTakenMillis);
+            resultDomain.setStudentId(studentId);
+            resultDomain.setScore(finalScore);
+            resultDomain.setStatus(status);
+            resultDomain.setDetails(mapper.writeValueAsString(details));
+            resultDomain.setGradedAt(LocalDateTime.now());
+            examResultRepo.save(resultDomain);
 
             return GradingResult.builder()
-                    .obtainedScore(obtained)
-                    .totalPossibleScore(totalPossible)
+                    .obtainedScore(finalScore)
+                    .totalPossibleScore(100) // Always normalized to 100%
                     .answeredCount(answered)
-                    .totalQuestions(totalQuestions)
-                    .summaryMessage(summary)
+                    .totalQuestions(submittedQuestions.size())
                     .details(details)
+                    .summaryMessage(isFinal? "Grading complete" : "Awaiting teacher review for coding/writing tasks")
                     .build();
 
         } catch (Exception e) {
-            logger.error("Submit exam failed for exam: {}", exam.getId(), e);
-
-            return GradingResult.builder()
-                    .obtainedScore(0)
-                    .totalPossibleScore(0)
-                    .answeredCount(0)
-                    .totalQuestions(0)
-                    .summaryMessage("Grading failed – please contact support")
-                    .build();
+            logger.error("Auto-grading failed for student {}: {}", studentId, e.getMessage());
+            return GradingResult.builder().summaryMessage("System error during grading").build();
         }
+    }
+
+    private static String getEvaluateGrade(String status, int finalScore) {
+        String grade = "";
+        if (status.equalsIgnoreCase("GRADED")) {
+            if (finalScore >= 90) {
+                grade = "A"; // Excellent / ល្អប្រសើរ
+            } else if (finalScore >= 80) {
+                grade = "B"; // Very Good / ល្អណាស់
+            } else if (finalScore >= 70) {
+                grade = "C"; // Good / ល្អ
+            } else if (finalScore >= 60) {
+                grade = "D"; // Satisfactory / មធ្យម
+            } else if (finalScore >= 50) {
+                grade = "E"; // Pass Threshold / ខ្សោយ
+            } else {
+                grade = "F"; // Fail / ធ្លាក់
+            }
+        } else {
+            grade = "PENDING";
+        }
+        return grade;
+    }
+
+    private boolean isObjective(String type) {
+        return type.equalsIgnoreCase("MULTIPLE_CHOICE") ||
+        type.equalsIgnoreCase("TRUE_FALSE") ||
+        type.equalsIgnoreCase("FILL_IN_THE_BLANK");
     }
 
     public Map<String, Object> getSingleExamInfoDetail(long examId) {
@@ -1146,5 +1172,59 @@ public class ExamService {
             finalServiceResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
             return finalServiceResponse;
         }
+    }
+
+    public Map<String, Integer> calculatePointDistribution(int totalPoints, int easyCount, int medCount, int hardCount) {
+        logger.info("Start - calculatePointDistribution with totalPoints: {}, easyCount: {}, medCount: {}, hardCount: {}",
+                totalPoints, easyCount, medCount, hardCount);
+        // 1. Define Ratios
+        double weightE = 1.0;
+        double weightM = 2.0;
+        double weightH = 4.0;
+
+        // 2. Calculate Weighted Total
+        double weightedSum = (easyCount * weightE) + (medCount * weightM) + (hardCount * weightH);
+        double pointPerUnit = totalPoints / weightedSum;
+
+        // 3. Calculate "Ideal" points (with decimals)
+        double idealE = weightE * pointPerUnit;
+        double idealM = weightM * pointPerUnit;
+        double idealH = weightH * pointPerUnit;
+
+        // 4. Initial integer allocation (Round Down)
+        int scoreE = (int) Math.floor(idealE);
+        int scoreM = (int) Math.floor(idealM);
+        int scoreH = (int) Math.floor(idealH);
+
+        // 5. Calculate current total and remainder
+        int currentTotal = (scoreE * easyCount) + (scoreM * medCount) + (scoreH * hardCount);
+        int remainingPoints = totalPoints - currentTotal;
+
+        // 6. Largest Remainder Distribution
+        // In a real classroom, we prioritize adding remainder points to Hard, then Medium
+        while (remainingPoints > 0) {
+            if (hardCount > 0 && remainingPoints >= hardCount) {
+                scoreH++;
+                remainingPoints -= hardCount;
+            } else if (medCount > 0 && remainingPoints >= medCount) {
+                scoreM++;
+                remainingPoints -= medCount;
+            } else if (easyCount > 0 && remainingPoints >= easyCount) {
+                scoreE++;
+                remainingPoints -= easyCount;
+            } else {
+                // If remainder is too small to split evenly across a group,
+                // assign to the first 'n' questions in the hardest category
+                break;
+            }
+        }
+
+        Map<String, Integer> result = new HashMap<>();
+        result.put("easyPoints", scoreE);
+        result.put("mediumPoints", scoreM);
+        result.put("hardPoints", scoreH);
+        result.put("finalTotal", (scoreE * easyCount) + (scoreM * medCount) + (scoreH * hardCount));
+
+        return result;
     }
 }

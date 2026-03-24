@@ -77,6 +77,9 @@ public class QuestionService {
                 new TypeReference<List<String>>() {}
         );
 
+        questionDetailsResponse.setChapterOrder(questionBankDomain.getChapter().getChapterIndex());
+        questionDetailsResponse.setChapterId(questionBankDomain.getChapter().getId());
+        questionDetailsResponse.setChapterName(questionBankDomain.getChapter().getChapter());
         questionDetailsResponse.setOptionContent(optionLists);
         questionDetailsResponse.setCorrectAnswer(questionBankDomain.getCorrectAnswer());
         questionDetailsResponse.setDifficulty(questionBankDomain.getDifficulty());
@@ -344,5 +347,30 @@ public class QuestionService {
             return finalServiceResponse;
         }
 
+    }
+
+    public Map<String, Object> getAllQuestionsByTeacherID(String teacherId) {
+
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        try {
+            logger.info("Start - getAllQuestionsByTeacherID service :: teacherId - {}", teacherId);
+
+            List<ClassDomain> classLists = classRepo.getClassDomainsByTeacherIdEqualsIgnoreCase(teacherId);
+            List<QuestionDetailsResponse> questionDetailsResponseList = new ArrayList<>();
+
+            for(ClassDomain classDomain: classLists){
+                long subjectId = classDomain.getSubjectId();
+                List<QuestionBankDomain> questionBankDomains = this.getAllQuestionsBySubjectId(subjectId);
+                questionDetailsResponseList.addAll(this.formQuestionResponseList(questionBankDomains));
+            }
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Questions retrieved successfully for teacher id: " + teacherId, questionDetailsResponseList);
+            logger.info("End - getAllQuestionsByTeacherID service :: {}", finalServiceResponse);
+            return finalServiceResponse;
+        } catch (Exception e) {
+            logger.error("Exception - getAllQuestionsByTeacherID service :: {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return finalServiceResponse;
+        }
     }
 }

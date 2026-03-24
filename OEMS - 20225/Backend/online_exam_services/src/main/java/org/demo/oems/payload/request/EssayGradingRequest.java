@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 public class EssayGradingRequest {
     private String rubric;
 
-    private String essayTopic;
+    private String essayTitle;
 
     private String essay;
 }

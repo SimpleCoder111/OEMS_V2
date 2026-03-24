@@ -2,7 +2,7 @@ package org.demo.oems.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,11 +21,20 @@ public class ExamResultDomain {
     private String studentId;
 
     @Column(name ="score", nullable = false, precision = 5, scale = 2)
-    private BigDecimal score;
+    private Integer score;
+
+    @Column(name = "status", nullable = false)
+    private String status; // e.g., "graded", "pending", "needs review"
 
     @Column(name = "time_taken", nullable = false)
-    private Integer timeTaken; // Seconds, for tie-breaking rankings [2]
+    private long timeTaken; // Seconds, for tie-breaking rankings [2]
 
     @Column(name = "graded_at")
     private LocalDateTime gradedAt = LocalDateTime.now();
+
+    @Column(name = "details", columnDefinition = "TEXT")
+    private String details;
+
+    @Column(name = "grade")
+    private String grade; // e.g., "A", "B", "C", "D", "F"
 }

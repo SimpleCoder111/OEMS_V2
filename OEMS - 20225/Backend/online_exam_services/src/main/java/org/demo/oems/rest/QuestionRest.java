@@ -7,15 +7,12 @@ import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.payload.request.QuestionBankInsertRequest;
-import org.demo.oems.payload.response.QuestionImportResponse;
 import org.demo.oems.service.QuestionService;
 import org.demo.oems.utils.CommonConstantUtils;
 import org.demo.oems.utils.ResponseUtils;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -28,6 +25,9 @@ public class QuestionRest {
 
     private final QuestionService questionBankService;
 
+    //=================================================================================================
+    //Teacher Question Service API
+    //=================================================================================================
     @Operation(summary = "Teacher Question Service - Get All Questions with Subject ID", description = "Get All Questions with Subject ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successful"),
@@ -42,6 +42,24 @@ public class QuestionRest {
         }catch (Exception e){
             logger.error(CommonConstantUtils.LOG_PREFIX_EXCEPTION_IN_CONTROLLER, "Get Question Bank By Subject ID", e.getMessage());
             Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("1", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Teacher Question Service - Get Questions by teacher ID", description = "Get All Questions with teacher ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @GetMapping("/teacher/questions/teacherId/{teacherId}")
+    public ResponseEntity<Map<String, Object>> getQuestionBankBySubjectId(@PathVariable String teacherId){
+        try{
+            logger.info("Start - getQuestionBankByTeacherId Controller :: {}", teacherId);
+            Map<String, Object> apiResponse = questionBankService.getAllQuestionsByTeacherID(teacherId);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception - getQuestionBankByTeacherId Controller :: {}", e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }
     }

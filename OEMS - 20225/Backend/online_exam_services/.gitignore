@@ -1,5 +1,6 @@
 # Maven
 target/
+src/main/resources/application.properties
 pom.xml.tag
 pom.xml.versions
 pom.xml.releaseBackup
