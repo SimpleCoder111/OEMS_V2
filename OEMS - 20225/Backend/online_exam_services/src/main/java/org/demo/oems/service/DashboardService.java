@@ -1,22 +1,15 @@
 package org.demo.oems.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.demo.oems.domain.*;
 import org.demo.oems.payload.response.*;
 import org.demo.oems.repository.*;
 import org.demo.oems.utils.ResponseUtils;
-import org.hibernate.type.descriptor.java.ObjectJavaType;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -250,37 +243,118 @@ public class DashboardService {
         }
     }
 
+    public Map<String, Object> getStudentRankingByExamId(long examId, String userId) {
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        try{
+            logger.debug("Start - getStudentRankingByExamId Service :: {} :: {}", examId, userId);
 
-//    public Map<String, Object> getStudentStats(String studentId) {
-//        // 1. Enrolled subjects count (distinct subjects via classrooms)
-//        long enrolledCount = classroomRepo.countDistinctSubjectByStudentIdAndStatus(studentId, "APPROVED");
-//
-//        // 2. Upcoming exams count (exams after now, for classes the student is in)
-//        LocalDateTime now = LocalDateTime.now();
-//        long upcomingCount = examRepository.countUpcomingExamsForStudent(studentId, now);
-//
-//        // 3. Average score (from past exams/grades)
-//        Double avgScoreRaw = gradeRepo.findAverageScoreByStudentId(studentId);
-//        int averageScore = avgScoreRaw != null ? avgScoreRaw.intValue() : 0;
-//
-//        // 4. Class rank (assuming you have a rank table or view)
-//        int classRank = classRankRepo.findRankByStudentId(studentId)
-//                .orElse(0);  // 0 if not ranked yet
-//
-//        // 5. Build summary
-//        StudentDashboardSummary summary = StudentDashboardSummary.builder()
-//                .enrolledSubjects((int) enrolledCount)
-//                .upcomingExams((int) upcomingCount)
-//                .averageScore(averageScore)
-//                .classRank(classRank)
-//                .build();
-//
-//        // 6. Final response map (exactly your format)
-//        Map<String, Object> response = new HashMap<>();
-//        response.put("status", "0");
-//        response.put("data", summary);
-//
-//        logger.debug("Student dashboard summary for {}: {}", studentId, summary);
-//        return response;
-//    }
+            Optional<ExamDomain> examDomainOptional = examRepository.findById(examId);
+            if(examDomainOptional.isEmpty()){
+                logger.error("Exam ID :: {} not found", examId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("404", "Exam Not Found", "");
+                return finalServiceResponse;
+            }
+
+            ExamDomain examDomain = examDomainOptional.get();
+
+            List<ExamResultDomain> examResults = examResultRepository.findByExamIdOrderByScoreDesc(examId);
+
+            int rank = 1;
+            int studentRank = -1; // -1 indicates not found
+            for (ExamResultDomain result : examResults) {
+                if (result.getStudentId().equals(userId)) {
+                    studentRank = rank;
+                    break;
+                }
+                rank++;
+            }
+
+            if(studentRank == -1){
+                logger.error("User ID :: {} not found in exam results for Exam ID :: {}", userId, examId);
+                finalServiceResponse = ResponseUtils.formatAPIResponse("404", "Student Exam Result Not Found", "");
+                return finalServiceResponse;
+            }
+
+            StudentExamRankingResponse rankingResponse = StudentExamRankingResponse.builder()
+                    .examId(examId)
+                    .examName(examDomain.getExamTitle())
+                    .rank(studentRank)
+                    .build();
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Success", rankingResponse);
+            logger.debug("Final Service Response :: {}", finalServiceResponse);
+            return finalServiceResponse;
+        }catch (Exception e){
+            logger.error("Exception - getStudentRankingByExamId :: {}", e.getMessage());
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return finalServiceResponse;
+        }
+    }
+
+    public Map<String, Object> getStudentRankingBySubjectId(long subjectId, String studentId) {
+        try {
+            logger.info("Calculating Subject Rank :: Subject: {}, Student: {}", subjectId, studentId);
+
+            // 1. Fetch the full ranked list for the subject from the DB
+            List<SubjectRankingProjection> rankings = examResultRepository.findSubjectRankingAcrossClass(subjectId);
+
+            // 2. Find the specific student's record in the list
+            SubjectRankingProjection studentStanding = rankings.stream()
+                    .filter(r -> r.getStudentId().equals(studentId))
+                    .findFirst()
+                    .orElse(null);
+
+            if (studentStanding == null) {
+                return ResponseUtils.formatAPIResponse("404", "No graded results found for this student in this subject", "");
+            }
+
+            // 3. Map to DTO for Frontend
+            SubjectRankingResponse response = SubjectRankingResponse.builder()
+                    .studentId(studentStanding.getStudentId())
+                    .totalScore(studentStanding.getTotalScore())
+                    .rank(studentStanding.getFinalRank())
+                    .totalParticipants(rankings.size())
+                    .build();
+
+            return ResponseUtils.formatAPIResponse("200", "Success", response);
+
+        } catch (Exception e) {
+            logger.error("Ranking Error for subject {}: {}", subjectId, e.getMessage());
+            return ResponseUtils.formatAPIResponse("500", "Internal Server Error", "");
+        }
+    }
+
+    public Map<String, Object> getStudentRankingBySubjectInClass(long subjectId, long classId, String studentId) {
+        try {
+            logger.info("Calculating Subject Rank In a class {} :: Subject: {}, Student: {}", classId, subjectId, studentId);
+
+            // 1. Fetch the full ranked list for the subject from the DB
+            List<SubjectRankingProjection> rankings = examResultRepository.findSubjectRankingInClass(subjectId, classId);
+
+            // 2. Find the specific student's record in the list
+            SubjectRankingProjection studentStanding = rankings.stream()
+                    .filter(r -> r.getStudentId().equals(studentId))
+                    .findFirst()
+                    .orElse(null);
+
+            if (studentStanding == null) {
+                return ResponseUtils.formatAPIResponse("404", "No graded results found for this student in this subject", "");
+            }
+
+            // 3. Map to DTO for Frontend
+            SubjectRankingResponse response = SubjectRankingResponse.builder()
+                    .studentId(studentStanding.getStudentId())
+                    .totalScore(studentStanding.getTotalScore())
+                    .rank(studentStanding.getFinalRank())
+                    .totalParticipants(rankings.size())
+                    .build();
+
+            return ResponseUtils.formatAPIResponse("200", "Success", response);
+
+        } catch (Exception e) {
+            logger.error("Ranking Error for subject {}: {}", subjectId, e.getMessage());
+            return ResponseUtils.formatAPIResponse("500", "Internal Server Error", "");
+        }
+    }
+
 }

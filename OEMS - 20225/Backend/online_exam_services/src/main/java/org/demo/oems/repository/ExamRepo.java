@@ -13,6 +13,8 @@ public interface ExamRepo extends JpaRepository<ExamDomain, Long> {
 
     List<ExamDomain> getExamDomainsByClassIdAndSubjectId(long classId, long subjectId);
 
+    List<ExamDomain> getExamDomainsBySubjectId(long subjectId);
+
     List<ExamDomain> getExamDomainsByClassId(long classId);
 
     List<ExamDomain> getExamDomainsByClassIdAndExamDateIsAfter(long classId, LocalDateTime localDateTime);
