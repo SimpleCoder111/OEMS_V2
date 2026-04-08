@@ -28,7 +28,8 @@ public class WebSecurityConfig {
         http// 1. Enable CORS with your config
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("http://localhost:8080"));  // exact origin
+                    config.setAllowedOriginPatterns(List.of("*"));
+//                    config.setAllowedOrigins(List.of("http://localhost:8080", "http://localhost:5500"));  // exact origin
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
@@ -39,6 +40,8 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/v1/demo/**").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/ws-exam/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole(VALUE_ADMIN)
                         .requestMatchers("/api/v1/teacher/**").hasAnyRole(VALUE_ADMIN, VALUE_TEACHER)

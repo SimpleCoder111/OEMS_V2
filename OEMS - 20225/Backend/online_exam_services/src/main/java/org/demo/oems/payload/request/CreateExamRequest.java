@@ -3,7 +3,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -33,7 +32,11 @@ public class CreateExamRequest {
 
     private Integer hardQuestions;
 
+    private int[] chapterIds;
+
     private int[] questionIds;
 
     private String userId;
+
+
 }

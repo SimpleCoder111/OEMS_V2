@@ -33,6 +33,8 @@ public class ExamPaperResponse {
 
     private List<ExamPaperQuestionResponse> questionLists;
 
+    private String ipAddress;
 
+    private String latency;
 
 }

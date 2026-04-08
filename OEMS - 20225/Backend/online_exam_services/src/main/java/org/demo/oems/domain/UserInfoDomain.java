@@ -31,7 +31,6 @@ public class UserInfoDomain implements UserDetails {
     @Column(nullable = false, length = 50)
     private String name;
 
-
     @JsonIgnore
     @Column(nullable = false, length = 256)
     private String password;  // BCrypt hashed

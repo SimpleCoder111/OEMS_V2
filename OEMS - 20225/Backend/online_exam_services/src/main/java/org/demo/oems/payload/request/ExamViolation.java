@@ -7,16 +7,14 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class TakeExamRequest {
-
+public class ExamViolation {
     private String studentId;
 
-    private long examId;
+    private Long examId;
 
-    private Boolean isDemo;
+    private String violationType; // Switch Tab, Copy-Paste, etc.
 
-    private String ipAddress;
+    private int violationCount;
 
-    private String latency;
-
+    private long examSessionId;
 }

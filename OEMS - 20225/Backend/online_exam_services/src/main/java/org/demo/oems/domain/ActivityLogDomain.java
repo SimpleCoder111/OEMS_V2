@@ -28,5 +28,7 @@ public class ActivityLogDomain {
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
 
+    @Column(name = "event_type")
+    private String eventType;
 
 }

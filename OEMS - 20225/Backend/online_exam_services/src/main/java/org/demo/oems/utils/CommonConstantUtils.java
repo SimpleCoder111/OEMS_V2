@@ -48,5 +48,17 @@ public class CommonConstantUtils {
 
     public static final String VALUE_HARD = "HARD";
 
+    public static final String VALUE_EXAM_ACTIVITY_JOIN = "JOIN";
+
+    public static final String VALUE_EXAM_ACTIVITY_IP_CHANGE = "IP_CHANGE";
+
+    public static final String VALUE_EXAM_ACTIVITY_LOW_NETWORK = "LOW_NETWORK";
+
+    public static final String VALUE_EXAM_ACTIVITY_REJOIN = "REJOIN";
+
+    public static final String VALUE_EXAM_ACTIVITY_VIOLATION = "VIOLATION";
+
+    public static final String VALUE_EXAM_ACTIVITY_SUBMIT = "SUBMIT";
+
 
 }

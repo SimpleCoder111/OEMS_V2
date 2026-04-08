@@ -119,8 +119,8 @@ public class ResultService {
         // For simplicity, we'll just put the raw string here
 
         ObjectMapper mapper = new ObjectMapper();
-
         try {
+            logger.debug("Exam Result Domain details JSON :: {}details JSON :: {}", examResultDomain.getDetails());
             // 1. Get the raw string from your DB
             String rawDbJson = examResultDomain.getDetails();
 
@@ -129,6 +129,7 @@ public class ResultService {
                 // This prevents double escaping
                 List<QuestionGradeDetail> detailsList = mapper.readValue(rawDbJson, new TypeReference<>() {});
 
+                logger.debug("details list after deserialization :: {}", detailsList);
                 // 3. Set the list DIRECTLY to the DTO to avoid the "details.details" nesting
                 gradingDetailsResponse.setDetails(detailsList);
             }

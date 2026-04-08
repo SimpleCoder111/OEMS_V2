@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.domain.*;
 import org.demo.oems.payload.request.CreateExamRequest;
+import org.demo.oems.payload.request.ExamViolation;
 import org.demo.oems.payload.request.TakeExamRequest;
 import org.demo.oems.payload.response.*;
 import org.demo.oems.repository.*;
@@ -27,6 +28,8 @@ import static org.demo.oems.utils.CommonConstantUtils.*;
 @Service
 @RequiredArgsConstructor
 public class ExamService {
+
+    private final ExamMonitoringService examMonitoringService;
 
     private final ExamResultRepo examResultRepo;
 
@@ -49,6 +52,8 @@ public class ExamService {
     private final QuestionService questionService;
 
     private final AIGradingService aiGradingService;
+
+    private final ActivityLogService activityLogService;
 
     private static final Logger logger = LogManager.getLogger(ExamService.class);
 
@@ -433,6 +438,8 @@ public class ExamService {
                 newExamPaperDomain.setEasyQuestions(createExamRequest.getEasyQuestions());
                 newExamPaperDomain.setMediumQuestions(createExamRequest.getMediumQuestions());
                 newExamPaperDomain.setHardQuestions(createExamRequest.getHardQuestions());
+                String chaterIdsString = ArrayStringUtils.intArrayToString(createExamRequest.getChapterIds());
+                newExamPaperDomain.setChapterIdArrayString(chaterIdsString);
             }
 
             examPaperRepo.save(newExamPaperDomain);
@@ -519,7 +526,32 @@ public class ExamService {
             ExamPaperResponse examPaperResponse;
 
             if (session != null && StringUtils.isNotBlank(session.getProgressData())) {
+
+                activityLogService.saveExamActivity(
+                        student.getUserId(),
+                        student.getName(),
+                        exam.getExamTitle(),
+                        LocalDateTime.now(),
+                        VALUE_EXAM_ACTIVITY_REJOIN,
+                        ""
+                );
+
                 // Session exists + has saved progress → restore from JSON
+                examMonitoringService.pushUpdate(
+                        ExamMonitorMessage.builder()
+                                .studentName(student.getName())
+                                .studentId(student.getUserId())
+                                .examId(exam.getId())
+                                .examTitle(exam.getExamTitle())
+                                .classId(exam.getClassId())
+                                .violationCount(0)
+                                .ipAddress(session.getIpAddress())
+                                .latency(session.getLatency())
+                                .currentTime(LocalDateTime.now())
+                                .eventType(VALUE_EXAM_ACTIVITY_REJOIN)
+                                .status(VALUE_EXAM_IN_PROGRESS)
+                                .build()
+                );
                 logger.debug("Restoring exam paper from saved progress");
                 examPaperResponse = restoreExamPaperFromProgress(session.getProgressData());
             } else {
@@ -540,8 +572,32 @@ public class ExamService {
                 session.setStatus(VALUE_EXAM_IN_PROGRESS);
                 session.setIpAddress(takeExamRequest.getIpAddress());
                 session.setProgressData(toJson(examPaperResponse));  // Save full response as JSON
-
+                session.setLatency(takeExamRequest.getLatency());
                 examSessionRepo.save(session);
+
+                activityLogService.saveExamActivity(
+                        student.getUserId(),
+                        student.getName(),
+                        exam.getExamTitle(),
+                        LocalDateTime.now(),
+                        VALUE_EXAM_ACTIVITY_JOIN,
+                        ""
+                );
+
+                examMonitoringService.pushUpdate(
+                        ExamMonitorMessage.builder()
+                                .studentName(student.getName())
+                                .studentId(student.getUserId())
+                                .examId(exam.getId())
+                                .examTitle(exam.getExamTitle())
+                                .classId(exam.getClassId())
+                                .violationCount(0)
+                                .currentTime(LocalDateTime.now())
+                                .eventType(VALUE_EXAM_ACTIVITY_JOIN)
+                                .status(VALUE_EXAM_IN_PROGRESS)
+                                .build()
+                );
+
             }
 
             // Final response
@@ -745,6 +801,34 @@ public class ExamService {
             session.setLastSave(LocalDateTime.now());
             session.setStatus(VALUE_EXAM_IN_PROGRESS);
 
+            //6. Check ipAddress and Internet latency for alert
+            if(!session.getIpAddress().equalsIgnoreCase(examPaper.getIpAddress())){
+                activityLogService.saveExamActivity(
+                        currentStudent.getUserId(),
+                        currentStudent.getName(),
+                        examPaper.getExamTitle(),
+                        LocalDateTime.now(),
+                        VALUE_EXAM_ACTIVITY_IP_CHANGE,
+                        ""
+                );
+
+                examMonitoringService.pushUpdate(
+                        ExamMonitorMessage.builder()
+                                .studentName(currentStudent.getName())
+                                .studentId(currentStudent.getUserId())
+                                .examTitle(examPaper.getExamTitle())
+                                .examId(examPaper.getExamId())
+                                .classId(examPaper.getClassId())
+                                .violationCount(0)
+                                .currentTime(LocalDateTime.now())
+                                .eventType( VALUE_EXAM_ACTIVITY_IP_CHANGE)
+                                .status(VALUE_EXAM_IN_PROGRESS)
+                                .build()
+                );
+
+                session.setIpAddress(examPaper.getIpAddress());
+            }
+
             examSessionRepo.save(session);
 
             saveExamProgressResponse.setExamSessionId(session.getId());
@@ -816,21 +900,42 @@ public class ExamService {
             }
 
             // 6. Auto-grade the exam
-            GradingResult gradingResult = this.autoGradeExam(finalProgressJson, exam, currentStudent.getUserId());
+            GradingResult gradingResult = this.autoGradeExam(request, finalProgressJson, exam, currentStudent.getUserId());
+
+            //6. Check ipAddress and Internet latency for alert
+            if(!session.getIpAddress().equalsIgnoreCase(request.getIpAddress())){
+                activityLogService.saveExamActivity(
+                        currentStudent.getUserId(),
+                        currentStudent.getName(),
+                        request.getExamTitle(),
+                        LocalDateTime.now(),
+                        VALUE_EXAM_ACTIVITY_IP_CHANGE,
+                        ""
+                );
+
+                examMonitoringService.pushUpdate(
+                        ExamMonitorMessage.builder()
+                                .studentName(currentStudent.getName())
+                                .studentId(currentStudent.getUserId())
+                                .examTitle(request.getExamTitle())
+                                .examId(request.getExamId())
+                                .classId(request.getClassId())
+                                .violationCount(0)
+                                .currentTime(LocalDateTime.now())
+                                .eventType( VALUE_EXAM_ACTIVITY_IP_CHANGE)
+                                .status(VALUE_EXAM_ACTIVITY_SUBMIT)
+                                .build()
+                );
+
+                session.setIpAddress(request.getIpAddress());
+            }
 
             // 7. Finalize session
             session.setProgressData(toJson(request));  // Save final answers
             session.setStatus(VALUE_EXAM_SUBMITTED);
             session.setLastSave(now);
             session.setSubmitTime(now);
-            session.setScore(gradingResult.getObtainedScore());
 
-
-            // Assuming exam.getExamDate() returns a LocalDateTime
-            LocalDateTime examDate = exam.getExamDate();
-            long timeTakenSecond = Duration.between(examDate, LocalDateTime.now()).toSeconds();
-
-            session.setTimeTaken(timeTakenSecond);
             examSessionRepo.save(session);
 
             submitExamResponse = SubmitExamResponse.builder()
@@ -845,6 +950,29 @@ public class ExamService {
                     .questionGradeDetails(gradingResult.getDetails())
                     .build();
 
+            activityLogService.saveExamActivity(
+                    currentStudent.getUserId(),
+                    currentStudent.getName(),
+                    exam.getExamTitle(),
+                    LocalDateTime.now(),
+                    VALUE_EXAM_ACTIVITY_SUBMIT,
+                    ""
+            );
+
+            examMonitoringService.pushUpdate(
+                    ExamMonitorMessage.builder()
+                            .studentName(currentStudent.getName())
+                            .studentId(currentStudent.getUserId())
+                            .examTitle(exam.getExamTitle())
+                            .examId(exam.getId())
+                            .classId(exam.getClassId())
+                            .violationCount(0)
+                            .currentTime(LocalDateTime.now())
+                            .eventType(VALUE_EXAM_ACTIVITY_SUBMIT)
+                            .status(VALUE_EXAM_SUBMITTED)
+                            .build()
+            );
+
             finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Success", submitExamResponse);
             return finalServiceResponse;
         }catch (Exception e){
@@ -854,157 +982,7 @@ public class ExamService {
         }
     }
 
-//    public GradingResult autoGradeExam(String progressJson, ExamDomain exam, String studentId) {
-//
-//        List<QuestionGradeDetail> details = new ArrayList<>();
-//        int totalPossible = 0;
-//        int obtained = 0;
-//        int answered = 0;
-//
-//        boolean isScored = true;
-//        boolean isFinal = true;
-//        try {
-//            ObjectMapper mapper = new ObjectMapper();
-//
-//            List<ExamPaperQuestionResponse> submittedQuestions = mapper.readValue(
-//                    progressJson,
-//                    new TypeReference<List<ExamPaperQuestionResponse>>() {}
-//            );
-//
-//            int totalQuestions = submittedQuestions.size();
-//
-//            // ✅ FIX: Batch fetch (avoid N+1 query problem)
-//            List<Long> questionIds = submittedQuestions.stream()
-//                    .map(ExamPaperQuestionResponse::getQuestionId)
-//                    .toList();
-//
-//            Map<Long, QuestionBankDomain> questionMap =
-//                    questionBankRepo.findAllById(questionIds)
-//                            .stream()
-//                            .collect(Collectors.toMap(QuestionBankDomain::getId, q -> q));
-//
-//            // 🔁 Loop through submitted answers
-//            for (ExamPaperQuestionResponse submitted : submittedQuestions) {
-//
-//                Long qId = submitted.getQuestionId();
-//                QuestionBankDomain question = questionMap.get(qId);
-//
-//                if (question == null) {
-//                    logger.warn("Question not found: {}", qId);
-//                    continue;
-//                }
-//
-//                int questionPoints = question.getPoints();
-//                totalPossible += questionPoints;
-//
-//                String studentAnswer = submitted.getStudentAnswer();
-//                String correctAnswer = question.getCorrectAnswer();
-//                String type = question.getQuestionType();
-//
-//                boolean isCorrect = false;
-//                int pointsEarned = 0;
-//                String correctAnswerDisplay = "";
-//
-//
-//                // ❌ Not answered
-//                if (studentAnswer == null || studentAnswer.trim().isEmpty()) {
-//                    details.add(QuestionGradeDetail.builder()
-//                            .questionId(qId)
-//                            .questionContent(question.getQuestionContent())
-//                            .questionType(type)
-//                            .questionDifficulty(question.getDifficulty())
-//                            .pointsPossible(questionPoints)
-//                            .pointsObtained(0)
-//                            .isCorrect(false)
-//                            .studentAnswer(null)
-//                            .correctAnswer("N/A")
-//                            .build());
-//                    continue;
-//                }
-//
-//                answered++;
-//
-//                // ✅ OBJECTIVE QUESTIONS
-//                if (type.equalsIgnoreCase(VALUE_MULTIPLE_CHOICE) ||
-//                        type.equalsIgnoreCase(VALUE_TRUE_FALSE) ||
-//                        type.equalsIgnoreCase(VALUE_FILL_IN_THE_BANK)) {
-//
-//                    isScored = true;
-//                    isCorrect = correctAnswer != null &&
-//                            correctAnswer.equalsIgnoreCase(studentAnswer.trim());
-//
-//                    pointsEarned = isCorrect ? questionPoints : 0;
-//                    correctAnswerDisplay = correctAnswer;
-//                }
-//
-//                // 🤖 CODING QUESTIONS (AI GRADING)
-//                else if (type.equalsIgnoreCase(VALUE_CODING) || type.equalsIgnoreCase(VALUE_WRITING)) {
-//                    isScored = false;
-//                    isFinal = false;
-//                    pointsEarned = 0;
-//                    isCorrect = false;
-//                    correctAnswerDisplay = "Waiting for teacher to review";
-//                }
-//
-//                logger.debug("isScore :: {}", isScored);
-//
-//                obtained += pointsEarned;
-//                details.add(QuestionGradeDetail.builder()
-//                        .questionId(qId)
-//                        .questionType(type)
-//                        .questionContent(question.getQuestionContent())
-//                        .questionDifficulty(question.getDifficulty())
-//                        .pointsPossible(questionPoints)
-//                        .pointsObtained(pointsEarned)
-//                        .isScore(isScored)
-//                        .isCorrect(isCorrect)
-//                        .studentAnswer(studentAnswer)
-//                        .correctAnswer(correctAnswerDisplay)
-//                        .build());
-//            }
-//
-//            //8. Save Exam Result
-//            ExamResultDomain examResultDomain = new ExamResultDomain();
-//            examResultDomain.setExam(exam);
-//            examResultDomain.setStudentId(studentId);
-//            examResultDomain.setScore(obtained);
-//
-//            String detailsString = mapper.writeValueAsString(details);
-//            examResultDomain.setDetails(detailsString);
-//
-//            String status = isFinal ? "GRADED" : "PENDING_REVIEW";
-//            String summaryMessage = isFinal ? "Grading complete" : "Awaiting teacher review for subjective questions";
-//            examResultDomain.setStatus(status);
-//
-//            examResultDomain.setTimeTaken(0);
-//            examResultDomain.setGradedAt(LocalDateTime.now());
-//
-//            logger.info("Saving exam result domain for student {}: {}", studentId, examResultDomain);
-//
-//            examResultRepo.save(examResultDomain);
-//            return GradingResult.builder()
-//                    .answeredCount(answered)
-//                    .obtainedScore(obtained)
-//                    .totalPossibleScore(100)
-//                    .totalQuestions(totalQuestions)
-//                    .details(details)
-//                    .summaryMessage(summaryMessage)
-//                    .build();
-//
-//        } catch (Exception e) {
-//            logger.error("Submit exam failed for exam: {}", exam.getId(), e);
-//
-//            return GradingResult.builder()
-//                    .obtainedScore(0)
-//                    .totalPossibleScore(100)
-//                    .answeredCount(0)
-//                    .totalQuestions(0)
-//                    .summaryMessage("Grading failed – please contact support")
-//                    .build();
-//        }
-//    }
-
-    public GradingResult autoGradeExam(String progressJson, ExamDomain exam, String studentId) {
+    public GradingResult autoGradeExam(ExamPaperResponse request, String progressJson, ExamDomain exam, String studentId) {
         List<QuestionGradeDetail> details = new ArrayList<>();
         double totalObtainedPoints = 0; // Use double for precise weighted math
         int answered = 0;
@@ -1067,6 +1045,7 @@ public class ExamService {
                     else {
                         isFinal = false; // Cannot be final if coding/writing exists
                         pointsEarned = 0;
+                        isCorrect = true;
                         feedback = "Waiting for teacher to review";
                     }
                 }
@@ -1075,6 +1054,8 @@ public class ExamService {
                 details.add(QuestionGradeDetail.builder()
                         .questionContent(question.getQuestionContent())
                         .questionId(question.getId())
+                        .chapterId(question.getChapter().getId())
+                        .chapterTitle(question.getChapter().getChapter())
                         .questionType(type)
                         .questionDifficulty(question.getDifficulty())
                         .pointsPossible((int) Math.round(potentialPoints))
@@ -1087,6 +1068,7 @@ public class ExamService {
                         .build());
             }
 
+            logger.debug("details :: {}", details);
             // 4. Finalize result
             int finalScore = (int) Math.round(totalObtainedPoints);
             String status = isFinal? "GRADED" : "PENDING_REVIEW";
@@ -1107,6 +1089,8 @@ public class ExamService {
             resultDomain.setStatus(status);
             resultDomain.setDetails(mapper.writeValueAsString(details));
             resultDomain.setGradedAt(LocalDateTime.now());
+
+            logger.debug("Result Domain Before Saving :: {}", resultDomain);
             examResultRepo.save(resultDomain);
 
             return GradingResult.builder()
@@ -1226,5 +1210,56 @@ public class ExamService {
         result.put("finalTotal", (scoreE * easyCount) + (scoreM * medCount) + (scoreH * hardCount));
 
         return result;
+    }
+
+    public Map<String, Object> examViolationCount(ExamViolation examViolation) {
+        Map<String, Object> finalServiceResponse = new HashMap<>();
+        try {
+            logger.info("Start - examViolationCount with request :: {}", examViolation);
+
+            ExamSessionDomain session = examSessionRepo.findById(examViolation.getExamSessionId())
+                    .orElseThrow(() -> new IllegalArgumentException("Exam session not found"));
+
+            UserInfoDomain studentInfo = session.getStudent();
+
+            activityLogService.saveExamActivity(
+                    studentInfo.getUserId(),
+                    studentInfo.getName(),
+                    session.getExam().getExamTitle(),
+                    LocalDateTime.now(),
+                    VALUE_EXAM_ACTIVITY_VIOLATION,
+                    examViolation.getViolationType()
+            );
+
+            // Increment violation count
+            int newViolationCount = session.getViolationCount() + 1;
+            session.setViolationCount(newViolationCount);
+            examSessionRepo.save(session);
+
+            // Push update to monitoring dashboard
+
+            logger.debug("Push web socket to teacher exam monitoring");
+            examMonitoringService.pushUpdate(
+                    ExamMonitorMessage.builder()
+                            .studentName(studentInfo.getName())
+                            .studentId(session.getStudent().getUserId())
+                            .examId(session.getExam().getId())
+                            .examTitle(session.getExam().getExamTitle())
+                            .classId(session.getExam().getClassId())
+                            .violationCount(newViolationCount)
+                            .currentTime(LocalDateTime.now())
+                            .eventType(VALUE_EXAM_ACTIVITY_VIOLATION)
+                            .status("IN PROCESS")
+                            .message(examViolation.getViolationType())
+                            .build()
+            );
+
+            finalServiceResponse = ResponseUtils.formatAPIResponse("200", "Violation count updated", Map.of("violationCount", newViolationCount));
+            return finalServiceResponse;
+        } catch (Exception e) {
+            logger.error("Error in examViolationCount", e);
+            finalServiceResponse = ResponseUtils.formatAPIResponse("500", "Internal error: " + e.getMessage(), null);
+            return finalServiceResponse;
+        }
     }
 }

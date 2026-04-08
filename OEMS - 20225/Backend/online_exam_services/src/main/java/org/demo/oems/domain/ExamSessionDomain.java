@@ -37,10 +37,10 @@ public class ExamSessionDomain {
     @Column(name = "submit_time")
     private LocalDateTime submitTime;
 
-    @Column(name ="score", nullable = false, precision = 5, scale = 2, columnDefinition = "numeric(5,2) default 0.00")
-    private int score = 0;
+    @Column(name = "violation_count")
+    private int violationCount = 0;
 
-    @Column(name = "time_taken", nullable = false)
-    private long timeTaken = 0; // Seconds, for tie-breaking rankings [2]
+    @Column(name = "latency", length = 45)
+    private String latency;
 }
 

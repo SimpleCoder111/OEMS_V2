@@ -29,4 +29,7 @@ public class ExamPaperDomain {
 
     @Column(name = "exam_paper_status") //Draft, Publish
     private String examPaperStatus;
+
+    @Column(name = "chapter_id_array") //Manual
+    private String chapterIdArrayString;
 }

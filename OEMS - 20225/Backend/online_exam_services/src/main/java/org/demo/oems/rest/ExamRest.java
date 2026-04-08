@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.oems.payload.request.CreateExamRequest;
+import org.demo.oems.payload.request.ExamViolation;
 import org.demo.oems.payload.request.TakeExamRequest;
 import org.demo.oems.payload.response.ExamPaperResponse;
 import org.demo.oems.service.ExamService;
@@ -281,6 +282,25 @@ public class ExamRest {
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
         }catch (Exception e){
             logger.error("Exception - submitExamPaper Controller :: {}", e.getMessage());
+            Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @Operation(summary = "Student Exam Service - Save Student Exam Violation Count", description = "")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successful"),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error")
+    })
+    @PostMapping("/student/exam/violation")
+    public ResponseEntity<Map<String, Object>> studentViolationCount(@RequestBody ExamViolation examViolation){
+        try{
+            logger.info("Start - studentViolationCount Controller :: {}", examViolation);
+            Map<String, Object> apiResponse = examService.examViolationCount(examViolation);
+            logger.info("End - studentViolationCount Controller :: {}", apiResponse);
+            return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(200));
+        }catch (Exception e){
+            logger.error("Exception - studentViolationCount Controller :: {}", e.getMessage());
             Map<String, Object> apiResponse = ResponseUtils.formatAPIResponse("500", e.getMessage(), "");
             return new ResponseEntity<>(apiResponse, HttpStatusCode.valueOf(500));
         }

@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.demo.oems.utils.CommonConstantUtils.*;
+
 @Service
 public class ActivityLogService {
 
@@ -43,6 +45,42 @@ public class ActivityLogService {
         activityLogRepo.save(activityLogDomain);
         logger.info("Successfully saved login activity for userId: {}", userId);
     }
+
+    public void saveExamActivity(String userId,
+                                 String userName,
+                                 String examTitle,
+                                 LocalDateTime localDateTime,
+                                 String eventType,
+                                 String violationType) {
+
+        logger.debug("Start - saveExamActivity :: userName: {}, examTitle: {}, localDateTime: {}, eventType: {}",
+                userName, examTitle, localDateTime, eventType);
+
+        ActivityLogDomain activityLogDomain = new ActivityLogDomain();
+        activityLogDomain.setUserId(userId);
+        activityLogDomain.setName(userName);
+
+        String localDateTimeStr = DateUtils.convertTimestampToString(localDateTime);
+
+        String actionDetail = switch (eventType) {
+            case VALUE_EXAM_ACTIVITY_JOIN -> "Student " + userName + " joined the " + examTitle + " at " + localDateTimeStr;
+            case VALUE_EXAM_ACTIVITY_REJOIN -> "Student " + userName + " rejoined the " + examTitle + " at " + localDateTimeStr;
+            case VALUE_EXAM_ACTIVITY_VIOLATION -> "Student " + userName + " try to (" + violationType + ") during the " + examTitle + " at " + localDateTimeStr;
+            case VALUE_EXAM_SUBMITTED -> "Student " + userName + " submitted the " + examTitle + " at " + localDateTimeStr;
+            case VALUE_EXAM_ACTIVITY_IP_CHANGE -> "Student " + userName + " changed IP during the " + examTitle + " at " + localDateTimeStr;
+            default -> "performed an unknown action";
+        };
+
+        logger.debug("action :: {}", actionDetail);
+
+        activityLogDomain.setAction(actionDetail);
+        activityLogDomain.setTimestamp(localDateTime);
+
+        activityLogRepo.save(activityLogDomain);
+
+        logger.info("Successfully saved activity for userId: {}", userId);
+    }
+
 
     public List<ActivityLogDomain> getAllActivityLogs() {
         return activityLogRepo.findAll();

@@ -33,4 +33,8 @@ public class QuestionGradeDetail {
     private String studentAnswer;
 
     private String correctAnswer;
+
+    private long chapterId;
+
+    private String chapterTitle;
 }
