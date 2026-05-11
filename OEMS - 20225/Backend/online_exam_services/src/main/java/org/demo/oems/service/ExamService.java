@@ -555,7 +555,7 @@ public class ExamService {
                 logger.debug("Restoring exam paper from saved progress");
                 examPaperResponse = restoreExamPaperFromProgress(session.getProgressData());
             } else {
-                // First time → build fresh exam paper
+                // First time build fresh exam paper
                 logger.debug("Building new exam paper");
                 examPaperResponse = buildNewExamPaperResponse(exam);
                 examPaperResponse.setStudentId(student.getUserId());
@@ -709,6 +709,7 @@ public class ExamService {
         qr.setQuestionType(questionBankDomain.getQuestionType());
         qr.setChapterName(questionBankDomain.getChapter().getChapter());
         qr.setChapterId(questionBankDomain.getChapter().getId());
+        qr.setDifficulty(questionBankDomain.getDifficulty());
         ObjectMapper mapper = new ObjectMapper();
         List<String> optionResponses = mapper.readValue(
                 questionBankDomain.getOptionContent(),

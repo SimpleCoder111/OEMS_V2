@@ -25,4 +25,6 @@ public class ExamPaperQuestionResponse {
 
     private String studentAnswer;
 
+    private String difficulty;
+
 }
